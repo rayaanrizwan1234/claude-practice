@@ -93,8 +93,9 @@ The cumulative values are arranged as a flattened triangle:
 ### Git Workflow & Best Practices
 - **DO NOT work directly on the main branch**
 - Create a development/feature branch for your work (e.g., `git checkout -b development` or `git checkout -b feature/claims-accumulator`)
-- **Commit frequently** with clear, meaningful commit messages
-- Each commit should represent a logical unit of work
+- **Commit and push frequently** with clear, meaningful commit messages
+- Each commit should represent a logical unit of work, and should be pushed to the remote repository to keep it synchronized
+- Push your commits regularly using `git push` to ensure backup and allow for collaboration/review
 - Create a pull request from your development branch to main for review
 - Use the PR description to provide a self-review, highlighting:
   - Assumptions made
