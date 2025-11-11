@@ -1,6 +1,8 @@
 package com.wtw.claims.model;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -199,6 +201,54 @@ public final class ClaimsTriangle {
      */
     public int getNumberOfDevelopmentYears() {
         return latestDevelopmentYear - earliestOriginYear + 1;
+    }
+
+    /**
+     * Flattens the cumulative values into a single list for output.
+     *
+     * <p>This method extracts cumulative values in row-major order, which is the format
+     * required for the output CSV. Each origin year forms a "row" in the triangle, with
+     * progressively fewer development years (forming the triangular shape).</p>
+     *
+     * <p><strong>Order:</strong></p>
+     * <ul>
+     *   <li>Iterate through origin years from earliest to latest</li>
+     *   <li>For each origin year, iterate through development years from that origin year to latest</li>
+     *   <li>Add the cumulative value to the output list</li>
+     * </ul>
+     *
+     * <p><strong>Example for Comp product (1990-1993):</strong></p>
+     * <pre>
+     * Origin 1990: [0.0, 0.0, 0.0, 0.0]       (4 values: dev years 1990-1993)
+     * Origin 1991: [0.0, 0.0, 0.0]            (3 values: dev years 1991-1993)
+     * Origin 1992: [110.0, 280.0]             (2 values: dev years 1992-1993)
+     * Origin 1993: [200.0]                    (1 value: dev year 1993)
+     *
+     * Flattened: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 110.0, 280.0, 200.0]
+     * </pre>
+     *
+     * <p><strong>Why This Order:</strong></p>
+     * <p>The triangular structure means earlier origin years have more development years
+     * because more time has passed. For example, a claim from 1990 can have payments in
+     * 1990, 1991, 1992, 1993 (4 years), while a claim from 1993 can only have payments
+     * in 1993 (1 year).</p>
+     *
+     * @return a list of cumulative values in row-major order (one row per origin year)
+     */
+    public List<Double> flattenCumulative() {
+        List<Double> flattened = new ArrayList<>();
+
+        // Iterate through each origin year (rows)
+        for (int originYear = earliestOriginYear; originYear <= latestDevelopmentYear; originYear++) {
+            // For each origin year, iterate through development years starting from origin year
+            // (development years before origin year are invalid - can't pay before claim occurs)
+            for (int devYear = originYear; devYear <= latestDevelopmentYear; devYear++) {
+                double cumulativeValue = getCumulativeValue(originYear, devYear);
+                flattened.add(cumulativeValue);
+            }
+        }
+
+        return flattened;
     }
 
     @Override

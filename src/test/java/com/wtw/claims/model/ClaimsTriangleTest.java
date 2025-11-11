@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
+
 /**
  * Comprehensive test suite for the ClaimsTriangle model class.
  *
@@ -1093,6 +1095,467 @@ class ClaimsTriangleTest {
             // Should not contain internal map representations
             assertThat(result).doesNotContain("incrementalData");
             assertThat(result).doesNotContain("cumulativeData");
+        }
+    }
+
+    /**
+     * Tests for the flattenCumulative method.
+     */
+    @Nested
+    @DisplayName("FlattenCumulative Tests")
+    class FlattenCumulativeTests {
+
+        @Test
+        @DisplayName("Should flatten single origin year triangle with single value")
+        void flattenCumulative_withSingleOriginYearSingleValue_returnsCorrectList() {
+            // Arrange
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 1993, 1993);
+            triangle.setCumulativeValue(1993, 1993, 200.0);
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert
+            assertThat(flattened).hasSize(1);
+            assertThat(flattened).containsExactly(200.0);
+        }
+
+        @Test
+        @DisplayName("Should flatten single origin year triangle with multiple development years")
+        void flattenCumulative_withSingleOriginYearMultipleDevelopmentYears_returnsCorrectList() {
+            // Arrange
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 1990, 1993);
+            triangle.setCumulativeValue(1990, 1990, 45.2);
+            triangle.setCumulativeValue(1990, 1991, 110.0);
+            triangle.setCumulativeValue(1990, 1992, 110.0);
+            triangle.setCumulativeValue(1990, 1993, 147.0);
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert
+            assertThat(flattened).hasSize(10); // Triangular number: 4+3+2+1 = 10
+            assertThat(flattened.subList(0, 4)).containsExactly(45.2, 110.0, 110.0, 147.0);
+        }
+
+        @Test
+        @DisplayName("Should flatten multiple origin years triangle in correct row-major order")
+        void flattenCumulative_withMultipleOriginYears_returnsCorrectRowMajorOrder() {
+            // Arrange
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 1992, 1993);
+            triangle.setCumulativeValue(1992, 1992, 110.0);
+            triangle.setCumulativeValue(1992, 1993, 280.0);
+            triangle.setCumulativeValue(1993, 1993, 200.0);
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert - Total size should be 3 (2 + 1)
+            assertThat(flattened).hasSize(3);
+            // First row (origin 1992): 2 development years
+            assertThat(flattened.get(0)).isEqualTo(110.0);
+            assertThat(flattened.get(1)).isEqualTo(280.0);
+            // Second row (origin 1993): 1 development year
+            assertThat(flattened.get(2)).isEqualTo(200.0);
+        }
+
+        @Test
+        @DisplayName("Should flatten triangle with all zeros when no cumulative values are set")
+        void flattenCumulative_withNoCumulativeValues_returnsListOfZeros() {
+            // Arrange
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 1992, 1993);
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert
+            assertThat(flattened).hasSize(3); // 2 + 1
+            assertThat(flattened).containsExactly(0.0, 0.0, 0.0);
+        }
+
+        @Test
+        @DisplayName("Should verify correct list size using triangular number formula")
+        void flattenCumulative_verifiesTriangularNumberFormula() {
+            // Arrange
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 1990, 1995);
+            int n = triangle.getNumberOfDevelopmentYears(); // 6 years
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert - Triangular number formula: n * (n + 1) / 2 = 6 * 7 / 2 = 21
+            int expectedSize = n * (n + 1) / 2;
+            assertThat(flattened).hasSize(expectedSize);
+            assertThat(flattened).hasSize(21);
+        }
+
+        @Test
+        @DisplayName("Should verify Comp example from CLAUDE.md documentation")
+        void flattenCumulative_withCompExample_matchesDocumentation() {
+            // Arrange - Comp example from CLAUDE.md
+            // Origin 1990: [0.0, 0.0, 0.0, 0.0]
+            // Origin 1991: [0.0, 0.0, 0.0]
+            // Origin 1992: [110.0, 280.0]
+            // Origin 1993: [200.0]
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 1990, 1993);
+            // Origin 1990 - all zeros (missing data)
+            // Origin 1991 - all zeros (missing data)
+            // Origin 1992
+            triangle.setCumulativeValue(1992, 1992, 110.0);
+            triangle.setCumulativeValue(1992, 1993, 280.0);
+            // Origin 1993
+            triangle.setCumulativeValue(1993, 1993, 200.0);
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert
+            assertThat(flattened).hasSize(10); // 4 + 3 + 2 + 1 = 10
+            assertThat(flattened).containsExactly(
+                0.0, 0.0, 0.0, 0.0,    // Origin 1990
+                0.0, 0.0, 0.0,          // Origin 1991
+                110.0, 280.0,           // Origin 1992
+                200.0                   // Origin 1993
+            );
+        }
+
+        @Test
+        @DisplayName("Should verify Non-Comp example from CLAUDE.md documentation")
+        void flattenCumulative_withNonCompExample_matchesDocumentation() {
+            // Arrange - Non-Comp example from CLAUDE.md
+            // Origin 1990: [45.2, 110.0, 110.0, 147.0]
+            // Origin 1991: [50.0, 125.0, 150.0]
+            // Origin 1992: [55.0, 140.0]
+            // Origin 1993: [100.0]
+            ClaimsTriangle triangle = new ClaimsTriangle("Non-Comp", 1990, 1993);
+            // Origin 1990
+            triangle.setCumulativeValue(1990, 1990, 45.2);
+            triangle.setCumulativeValue(1990, 1991, 110.0);
+            triangle.setCumulativeValue(1990, 1992, 110.0);
+            triangle.setCumulativeValue(1990, 1993, 147.0);
+            // Origin 1991
+            triangle.setCumulativeValue(1991, 1991, 50.0);
+            triangle.setCumulativeValue(1991, 1992, 125.0);
+            triangle.setCumulativeValue(1991, 1993, 150.0);
+            // Origin 1992
+            triangle.setCumulativeValue(1992, 1992, 55.0);
+            triangle.setCumulativeValue(1992, 1993, 140.0);
+            // Origin 1993
+            triangle.setCumulativeValue(1993, 1993, 100.0);
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert
+            assertThat(flattened).hasSize(10); // 4 + 3 + 2 + 1 = 10
+            assertThat(flattened).containsExactly(
+                45.2, 110.0, 110.0, 147.0,  // Origin 1990
+                50.0, 125.0, 150.0,          // Origin 1991
+                55.0, 140.0,                 // Origin 1992
+                100.0                        // Origin 1993
+            );
+        }
+
+        @Test
+        @DisplayName("Should flatten single year range triangle correctly")
+        void flattenCumulative_withSingleYearRange_returnsOneValue() {
+            // Arrange
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 2000, 2000);
+            triangle.setCumulativeValue(2000, 2000, 99.99);
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert
+            assertThat(flattened).hasSize(1);
+            assertThat(flattened).containsExactly(99.99);
+        }
+
+        @Test
+        @DisplayName("Should flatten large year range triangle correctly")
+        void flattenCumulative_withLargeYearRange_calculatesCorrectSize() {
+            // Arrange - 10 years span (1990-1999)
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 1990, 1999);
+            triangle.setCumulativeValue(1990, 1990, 100.0);
+            triangle.setCumulativeValue(1999, 1999, 999.0);
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert - Triangular number: 10 * 11 / 2 = 55
+            assertThat(flattened).hasSize(55);
+            // First value should be from origin 1990, dev 1990
+            assertThat(flattened.get(0)).isEqualTo(100.0);
+            // Last value should be from origin 1999, dev 1999
+            assertThat(flattened.get(54)).isEqualTo(999.0);
+        }
+
+        @Test
+        @DisplayName("Should preserve order with earliest origin year first")
+        void flattenCumulative_preservesOrderWithEarliestOriginYearFirst() {
+            // Arrange
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 1990, 1992);
+            triangle.setCumulativeValue(1990, 1990, 1.0);
+            triangle.setCumulativeValue(1991, 1991, 2.0);
+            triangle.setCumulativeValue(1992, 1992, 3.0);
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert - First value should be from earliest origin year (1990)
+            assertThat(flattened.get(0)).isEqualTo(1.0);
+            // Triangle structure: 3 + 2 + 1 = 6 values
+            assertThat(flattened).hasSize(6);
+        }
+
+        @Test
+        @DisplayName("Should return non-null list")
+        void flattenCumulative_returnsNonNullList() {
+            // Arrange
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 1990, 1993);
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert
+            assertThat(flattened).isNotNull();
+        }
+
+        @Test
+        @DisplayName("Should return mutable list that can be modified")
+        void flattenCumulative_returnsMutableList() {
+            // Arrange
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 1992, 1993);
+            triangle.setCumulativeValue(1992, 1992, 110.0);
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert - List should be mutable (can add elements)
+            assertThat(flattened).isNotNull();
+            flattened.add(999.0); // Should not throw UnsupportedOperationException
+            assertThat(flattened).contains(999.0);
+        }
+
+        @Test
+        @DisplayName("Should return independent lists on multiple calls")
+        void flattenCumulative_calledMultipleTimes_returnsIndependentLists() {
+            // Arrange
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 1992, 1993);
+            triangle.setCumulativeValue(1992, 1992, 110.0);
+            triangle.setCumulativeValue(1992, 1993, 280.0);
+
+            // Act
+            List<Double> flattened1 = triangle.flattenCumulative();
+            List<Double> flattened2 = triangle.flattenCumulative();
+
+            // Assert - Lists should be independent (not same reference)
+            assertThat(flattened1).isNotSameAs(flattened2);
+            assertThat(flattened1).isEqualTo(flattened2); // But contain same values
+
+            // Modifying one should not affect the other
+            flattened1.set(0, 999.0);
+            assertThat(flattened1.get(0)).isEqualTo(999.0);
+            assertThat(flattened2.get(0)).isEqualTo(110.0); // Should remain unchanged
+        }
+
+        @Test
+        @DisplayName("Should handle mix of set and unset cumulative values")
+        void flattenCumulative_withMixOfSetAndUnsetValues_fillsUnsetWithZeros() {
+            // Arrange
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 1991, 1993);
+            // Set some values, leave others unset (should default to 0.0)
+            triangle.setCumulativeValue(1991, 1992, 100.0); // Set middle value
+            triangle.setCumulativeValue(1993, 1993, 300.0); // Set last value
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert
+            assertThat(flattened).hasSize(6); // 3 + 2 + 1
+            assertThat(flattened).containsExactly(
+                0.0, 100.0, 0.0,  // Origin 1991: unset, set, unset
+                0.0, 0.0,          // Origin 1992: all unset
+                300.0              // Origin 1993: set
+            );
+        }
+
+        @Test
+        @DisplayName("Should handle negative cumulative values correctly")
+        void flattenCumulative_withNegativeValues_includesNegativeValues() {
+            // Arrange
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 1992, 1993);
+            triangle.setCumulativeValue(1992, 1992, -50.0);
+            triangle.setCumulativeValue(1992, 1993, -100.0);
+            triangle.setCumulativeValue(1993, 1993, 200.0);
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert
+            assertThat(flattened).containsExactly(-50.0, -100.0, 200.0);
+        }
+
+        @Test
+        @DisplayName("Should handle very small cumulative values")
+        void flattenCumulative_withVerySmallValues_preservesPrecision() {
+            // Arrange
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 1993, 1993);
+            triangle.setCumulativeValue(1993, 1993, 0.000001);
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert
+            assertThat(flattened).hasSize(1);
+            assertThat(flattened.get(0)).isEqualTo(0.000001);
+        }
+
+        @Test
+        @DisplayName("Should handle very large cumulative values")
+        void flattenCumulative_withVeryLargeValues_handlesCorrectly() {
+            // Arrange
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 1993, 1993);
+            double largeValue = 999_999_999.99;
+            triangle.setCumulativeValue(1993, 1993, largeValue);
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert
+            assertThat(flattened).hasSize(1);
+            assertThat(flattened.get(0)).isEqualTo(largeValue);
+        }
+
+        @Test
+        @DisplayName("Should maintain correct order for triangle with sparse data")
+        void flattenCumulative_withSparseData_maintainsCorrectOrder() {
+            // Arrange - Only set values on the diagonal
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 1990, 1993);
+            triangle.setCumulativeValue(1990, 1990, 1.0);
+            triangle.setCumulativeValue(1991, 1991, 2.0);
+            triangle.setCumulativeValue(1992, 1992, 3.0);
+            triangle.setCumulativeValue(1993, 1993, 4.0);
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert
+            assertThat(flattened).hasSize(10);
+            // Check diagonal values are in correct positions
+            assertThat(flattened.get(0)).isEqualTo(1.0);  // Origin 1990, dev 1990 (pos 0)
+            assertThat(flattened.get(4)).isEqualTo(2.0);  // Origin 1991, dev 1991 (pos 4)
+            assertThat(flattened.get(7)).isEqualTo(3.0);  // Origin 1992, dev 1992 (pos 7)
+            assertThat(flattened.get(9)).isEqualTo(4.0);  // Origin 1993, dev 1993 (pos 9)
+        }
+
+        @Test
+        @DisplayName("Should verify triangular structure with 2-year range")
+        void flattenCumulative_with2YearRange_verifies3Values() {
+            // Arrange
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 2000, 2001);
+            triangle.setCumulativeValue(2000, 2000, 10.0);
+            triangle.setCumulativeValue(2000, 2001, 20.0);
+            triangle.setCumulativeValue(2001, 2001, 30.0);
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert - 2 + 1 = 3 values
+            assertThat(flattened).hasSize(3);
+            assertThat(flattened).containsExactly(10.0, 20.0, 30.0);
+        }
+
+        @Test
+        @DisplayName("Should verify triangular structure with 5-year range")
+        void flattenCumulative_with5YearRange_verifies15Values() {
+            // Arrange
+            ClaimsTriangle triangle = new ClaimsTriangle("Comp", 1990, 1994);
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert - 5 + 4 + 3 + 2 + 1 = 15 values
+            assertThat(flattened).hasSize(15);
+        }
+
+        @Test
+        @DisplayName("Should flatten consistent results when called multiple times without modifications")
+        void flattenCumulative_calledMultipleTimesWithoutModifications_returnsConsistentResults() {
+            // Arrange
+            ClaimsTriangle triangle = buildNonCompTriangleFromDocumentation();
+
+            // Act
+            List<Double> flattened1 = triangle.flattenCumulative();
+            List<Double> flattened2 = triangle.flattenCumulative();
+            List<Double> flattened3 = triangle.flattenCumulative();
+
+            // Assert
+            assertThat(flattened1).isEqualTo(flattened2);
+            assertThat(flattened2).isEqualTo(flattened3);
+        }
+
+        /**
+         * Helper method to build Non-Comp triangle from CLAUDE.md documentation.
+         *
+         * @return ClaimsTriangle with Non-Comp example data
+         */
+        private ClaimsTriangle buildNonCompTriangleFromDocumentation() {
+            ClaimsTriangle triangle = new ClaimsTriangle("Non-Comp", 1990, 1993);
+            // Origin 1990
+            triangle.setCumulativeValue(1990, 1990, 45.2);
+            triangle.setCumulativeValue(1990, 1991, 110.0);
+            triangle.setCumulativeValue(1990, 1992, 110.0);
+            triangle.setCumulativeValue(1990, 1993, 147.0);
+            // Origin 1991
+            triangle.setCumulativeValue(1991, 1991, 50.0);
+            triangle.setCumulativeValue(1991, 1992, 125.0);
+            triangle.setCumulativeValue(1991, 1993, 150.0);
+            // Origin 1992
+            triangle.setCumulativeValue(1992, 1992, 55.0);
+            triangle.setCumulativeValue(1992, 1993, 140.0);
+            // Origin 1993
+            triangle.setCumulativeValue(1993, 1993, 100.0);
+            return triangle;
+        }
+
+        /**
+         * Helper method to populate a triangle with specific cumulative values for testing.
+         *
+         * @param triangle the triangle to populate
+         * @param values 2D array where values[originYearOffset][devYearOffset] contains the cumulative value
+         */
+        private void populateTriangleWithValues(ClaimsTriangle triangle, double[][] values) {
+            int earliestOrigin = triangle.getEarliestOriginYear();
+            int latestDev = triangle.getLatestDevelopmentYear();
+
+            for (int originOffset = 0; originOffset <= (latestDev - earliestOrigin); originOffset++) {
+                int originYear = earliestOrigin + originOffset;
+                for (int devOffset = 0; devOffset <= (latestDev - originYear); devOffset++) {
+                    int devYear = originYear + devOffset;
+                    if (originOffset < values.length && devOffset < values[originOffset].length) {
+                        triangle.setCumulativeValue(originYear, devYear, values[originOffset][devOffset]);
+                    }
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("Should use helper method to verify custom triangle flattening")
+        void flattenCumulative_withHelperMethod_verifiesCustomData() {
+            // Arrange
+            ClaimsTriangle triangle = new ClaimsTriangle("Test", 1990, 1991);
+            double[][] values = {
+                {100.0, 200.0},  // Origin 1990
+                {50.0}           // Origin 1991
+            };
+            populateTriangleWithValues(triangle, values);
+
+            // Act
+            List<Double> flattened = triangle.flattenCumulative();
+
+            // Assert
+            assertThat(flattened).containsExactly(100.0, 200.0, 50.0);
         }
     }
 
