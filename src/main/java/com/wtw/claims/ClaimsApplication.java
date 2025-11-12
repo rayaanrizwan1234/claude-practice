@@ -140,12 +140,14 @@ public class ClaimsApplication {
      *   <li><strong>Write:</strong> Output cumulative triangles</li>
      * </ol>
      *
+     * <p><strong>Note:</strong> This method is package-private to allow integration testing.</p>
+     *
      * @param inputPath the path to the input CSV file
      * @param outputPath the path to the output CSV file
      * @throws IOException if an I/O error occurs reading or writing files
      * @throws IllegalArgumentException if the input data is invalid
      */
-    private static void processClaims(Path inputPath, Path outputPath) throws IOException {
+    static void processClaims(Path inputPath, Path outputPath) throws IOException {
         // STEP 1: Read claims from CSV file
         logger.info("Step 1/5: Reading claims from CSV...");
         ClaimsReader reader = new ClaimsReader();
