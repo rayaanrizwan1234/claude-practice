@@ -166,6 +166,20 @@ mvn test -Dtest=ClaimsReaderTest\$YearRangeTests
 mvn test  # All tests should still pass
 ```
 
+### Code Review & Quality Checks
+
+- [ ] Use **@test-generator** agent to generate comprehensive tests for YearRange
+- [ ] Use **@pr-code-reviewer** agent to review YearRange implementation
+- [ ] Address any issues found
+- [ ] Commit and push changes
+
+```bash
+git add src/main/java/com/wtw/claims/reader/ClaimsReader.java
+git add src/test/java/com/wtw/claims/reader/ClaimsReaderTest.java
+git commit -m "Phase 1: Add YearRange data class with tests"
+git push origin development
+```
+
 ---
 
 ## PHASE 2: Implement scanForYearRange() Method
@@ -416,9 +430,19 @@ mvn test -Dtest=ClaimsReaderTest\$ScanForYearRangeTests
 mvn test  # All tests should still pass
 ```
 
-### Code Review
+### Code Review & Quality Checks
 
-- [ ] Use **@pr-code-reviewer** agent to review `scanForYearRange()` implementation
+- [ ] Use **@test-generator** agent to generate comprehensive tests for scanForYearRange()
+- [ ] Use **@pr-code-reviewer** agent to review scanForYearRange() implementation
+- [ ] Address any issues found
+- [ ] Commit and push changes
+
+```bash
+git add src/main/java/com/wtw/claims/reader/ClaimsReader.java
+git add src/test/java/com/wtw/claims/reader/ClaimsReaderTest.java
+git commit -m "Phase 2: Implement scanForYearRange() method with tests"
+git push origin development
+```
 
 ---
 
@@ -682,9 +706,19 @@ mvn test -Dtest=ClaimsReaderTest\$StreamClaimsTests
 mvn test  # All tests should still pass
 ```
 
-### Code Review
+### Code Review & Quality Checks
 
-- [ ] Use **@pr-code-reviewer** agent to review `streamClaims()` implementation
+- [ ] Use **@test-generator** agent to generate comprehensive tests for streamClaims()
+- [ ] Use **@pr-code-reviewer** agent to review streamClaims() implementation
+- [ ] Address any issues found
+- [ ] Commit and push changes
+
+```bash
+git add src/main/java/com/wtw/claims/reader/ClaimsReader.java
+git add src/test/java/com/wtw/claims/reader/ClaimsReaderTest.java
+git commit -m "Phase 3: Implement streamClaims() method with tests"
+git push origin development
+```
 
 ---
 
@@ -874,6 +908,19 @@ diff output_streaming.csv files/cumulative_claims.csv
 - ✅ Integration tests verify end-to-end correctness
 - ✅ Output should be **identical** to current approach
 - ✅ Memory usage reduced by ~41%
+
+### Code Review & Quality Checks
+
+- [ ] Use **@pr-code-reviewer** agent to review ClaimsApplication changes
+- [ ] Address any issues found
+- [ ] Run all tests and verify output matches expected
+- [ ] Commit and push changes
+
+```bash
+git add src/main/java/com/wtw/claims/ClaimsApplication.java
+git commit -m "Phase 4: Update ClaimsApplication to use streaming approach"
+git push origin development
+```
 
 ---
 
@@ -1159,6 +1206,18 @@ Pass 2: CSV → ClaimRecord → Add to Triangle → Discard
 - [ ] Review updated documentation for accuracy
 - [ ] Verify code examples are correct
 - [ ] Check markdown formatting
+
+### Code Review & Quality Checks
+
+- [ ] Use **@pr-code-reviewer** agent to review SOLUTION.md updates
+- [ ] Address any issues found
+- [ ] Commit and push changes
+
+```bash
+git add SOLUTION.md
+git commit -m "Phase 6: Update documentation with streaming approach"
+git push origin development
+```
 
 ---
 
