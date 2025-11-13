@@ -117,7 +117,7 @@ public class ClaimsWriter {
 
             // Sort products alphabetically and write each product line
             List<String> sortedProducts = triangles.keySet()
-                .stream().sorted().toList();
+                .stream().sorted().collect(Collectors.toList());
 
             for (String productName : sortedProducts) {
                 ClaimsTriangle triangle = triangles.get(productName);

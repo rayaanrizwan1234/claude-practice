@@ -125,7 +125,8 @@ public class ClaimsReader {
                 try {
                     ClaimRecord claimRecord = parseRecord(csvRecord, lineNumber);
                     records.add(claimRecord);
-                } catch (Exception e) {
+                } catch (IllegalArgumentException e) {
+                    // Catches IllegalArgumentException and its subclass NumberFormatException
                     String errorMsg = String.format(
                         "Error parsing line %d: %s",
                         lineNumber,

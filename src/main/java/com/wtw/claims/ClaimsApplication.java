@@ -114,7 +114,6 @@ public class ClaimsApplication {
         } catch (IOException e) {
             logger.error("I/O error occurred", e);
             System.err.println("Error: I/O error - " + e.getMessage());
-            e.printStackTrace();
             System.exit(1);
         } catch (IllegalArgumentException e) {
             logger.error("Invalid input data", e);
@@ -123,7 +122,6 @@ public class ClaimsApplication {
         } catch (Exception e) {
             logger.error("Unexpected error occurred", e);
             System.err.println("Error: " + e.getMessage());
-            e.printStackTrace();
             System.exit(1);
         }
     }
