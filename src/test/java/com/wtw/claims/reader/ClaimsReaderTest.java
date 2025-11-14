@@ -749,6 +749,521 @@ class ClaimsReaderTest {
     }
 
     // ========================================================================
+    // scanForYearRange() Tests
+    // ========================================================================
+
+    @Nested
+    @DisplayName("scanForYearRange() Tests")
+    class ScanForYearRangeTests {
+
+        @Nested
+        @DisplayName("Valid Scenarios")
+        class ValidScenariosTests {
+
+            @Test
+            @DisplayName("Should scan single record file and return correct year range")
+            void scanForYearRange_withSingleRecord_returnsCorrectRange(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("single_record.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992, 1993, 110.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act
+                ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
+
+                // Assert
+                assertThat(yearRange).isNotNull();
+                assertThat(yearRange.minOriginYear).isEqualTo(1992);
+                assertThat(yearRange.maxDevYear).isEqualTo(1993);
+            }
+
+            @Test
+            @DisplayName("Should find correct min/max years across multiple records with consecutive years")
+            void scanForYearRange_withConsecutiveYears_returnsCorrectRange(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("consecutive_years.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992, 1992, 110.0\n" +
+                                   "Comp, 1992, 1993, 170.0\n" +
+                                   "Comp, 1993, 1993, 200.0\n" +
+                                   "Non-Comp, 1990, 1990, 45.2\n" +
+                                   "Non-Comp, 1990, 1991, 64.8\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act
+                ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
+
+                // Assert
+                assertThat(yearRange.minOriginYear).isEqualTo(1990);
+                assertThat(yearRange.maxDevYear).isEqualTo(1993);
+            }
+
+            @Test
+            @DisplayName("Should find correct min/max years when there are gaps in years")
+            void scanForYearRange_withGapsInYears_returnsCorrectRange(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("gaps_in_years.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1990, 1990, 110.0\n" +
+                                   "Comp, 1995, 1995, 170.0\n" +
+                                   "Comp, 2000, 2005, 200.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act
+                ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
+
+                // Assert
+                assertThat(yearRange.minOriginYear).isEqualTo(1990);
+                assertThat(yearRange.maxDevYear).isEqualTo(2005);
+            }
+
+            @Test
+            @DisplayName("Should handle records where origin year equals development year")
+            void scanForYearRange_withSameOriginAndDevYears_returnsCorrectRange(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("same_years.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 2000, 2000, 110.0\n" +
+                                   "Non-Comp, 2000, 2000, 120.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act
+                ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
+
+                // Assert
+                assertThat(yearRange.minOriginYear).isEqualTo(2000);
+                assertThat(yearRange.maxDevYear).isEqualTo(2000);
+            }
+
+            @Test
+            @DisplayName("Should scan multiple products and find overall min/max years")
+            void scanForYearRange_withMultipleProducts_returnsOverallRange(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("multiple_products.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "ProductA, 1985, 1990, 100.0\n" +
+                                   "ProductB, 2000, 2005, 200.0\n" +
+                                   "ProductC, 1995, 2000, 150.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act
+                ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
+
+                // Assert
+                assertThat(yearRange.minOriginYear).isEqualTo(1985);
+                assertThat(yearRange.maxDevYear).isEqualTo(2005);
+            }
+
+            @Test
+            @DisplayName("Should handle large year ranges spanning decades")
+            void scanForYearRange_withLargeYearRange_returnsCorrectRange(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("large_range.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1950, 1955, 110.0\n" +
+                                   "Comp, 1980, 1990, 170.0\n" +
+                                   "Comp, 2020, 2050, 200.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act
+                ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
+
+                // Assert
+                assertThat(yearRange.minOriginYear).isEqualTo(1950);
+                assertThat(yearRange.maxDevYear).isEqualTo(2050);
+            }
+
+            @Test
+            @DisplayName("Should correctly scan valid_claims.csv test resource file")
+            void scanForYearRange_withValidClaimsCsv_returnsCorrectRange() throws IOException {
+                // Arrange
+                Path validCsvPath = testResourcesPath.resolve("valid_claims.csv");
+
+                // Act
+                ClaimsReader.YearRange yearRange = reader.scanForYearRange(validCsvPath);
+
+                // Assert
+                assertThat(yearRange.minOriginYear).isEqualTo(1990);
+                assertThat(yearRange.maxDevYear).isEqualTo(1993);
+            }
+
+            @Test
+            @DisplayName("Should ignore incremental value field during scanning (not needed for year range)")
+            void scanForYearRange_ignoresIncrementalValue_scansOnlyYears(@TempDir Path tempDir) throws IOException {
+                // Arrange - Incremental values can be anything, even empty or invalid
+                Path csvPath = tempDir.resolve("ignore_incremental.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1990, 1995, 999999.99\n" +
+                                   "Comp, 1985, 2000, \n" +
+                                   "Comp, 1980, 2005, anything\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act
+                ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
+
+                // Assert - Should scan successfully despite invalid incremental values
+                assertThat(yearRange.minOriginYear).isEqualTo(1980);
+                assertThat(yearRange.maxDevYear).isEqualTo(2005);
+            }
+        }
+
+        @Nested
+        @DisplayName("Edge Cases")
+        class EdgeCasesTests {
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException for file with only header (no data)")
+            void scanForYearRange_withOnlyHeader_throwsIllegalArgumentException(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("header_only.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.scanForYearRange(csvPath))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("No valid claim records found in input file");
+            }
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException for empty file")
+            void scanForYearRange_withEmptyFile_throwsIllegalArgumentException() {
+                // Arrange
+                Path emptyPath = testResourcesPath.resolve("empty.csv");
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.scanForYearRange(emptyPath))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("no header row");
+            }
+
+            @Test
+            @DisplayName("Should throw NullPointerException when file path is null")
+            void scanForYearRange_withNullFilePath_throwsNullPointerException() {
+                // Act & Assert
+                assertThatThrownBy(() -> reader.scanForYearRange(null))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("File path cannot be null");
+            }
+
+            @Test
+            @DisplayName("Should throw IOException when file does not exist")
+            void scanForYearRange_withNonExistentFile_throwsIOException() {
+                // Arrange
+                Path nonExistentPath = testResourcesPath.resolve("does_not_exist.csv");
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.scanForYearRange(nonExistentPath))
+                    .isInstanceOf(IOException.class);
+            }
+
+            @Test
+            @DisplayName("Should use O(1) memory regardless of file size (only tracks two integers)")
+            void scanForYearRange_withLargeFile_usesConstantMemory(@TempDir Path tempDir) throws IOException {
+                // Arrange - Create large CSV file with 10,000 records
+                Path csvPath = tempDir.resolve("large_file.csv");
+                StringBuilder csvContent = new StringBuilder("Product, Origin Year, Development Year, Incremental Value\n");
+                for (int i = 0; i < 10_000; i++) {
+                    int year = 1900 + (i % 100);
+                    csvContent.append(String.format("Product%d, %d, %d, %d.0\n", i % 10, year, year + 5, i));
+                }
+                Files.writeString(csvPath, csvContent.toString());
+
+                // Act - Should complete quickly without loading all data into memory
+                ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
+
+                // Assert - Should have scanned and found correct min/max
+                assertThat(yearRange.minOriginYear).isEqualTo(1900);
+                assertThat(yearRange.maxDevYear).isEqualTo(2004); // 1999 + 5
+            }
+        }
+
+        @Nested
+        @DisplayName("Invalid Data Handling")
+        class InvalidDataHandlingTests {
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException for invalid CSV header")
+            void scanForYearRange_withInvalidHeader_throwsIllegalArgumentException() {
+                // Arrange
+                Path invalidHeaderPath = testResourcesPath.resolve("invalid_header.csv");
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.scanForYearRange(invalidHeaderPath))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Invalid CSV header");
+            }
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException when development year is before origin year")
+            void scanForYearRange_withDevYearBeforeOriginYear_throwsIllegalArgumentException(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("invalid_year_order.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1995, 1990, 110.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.scanForYearRange(csvPath))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Development year")
+                    .hasMessageContaining("cannot be before origin year")
+                    .hasMessageContaining("1990")
+                    .hasMessageContaining("1995");
+            }
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException for non-numeric origin year")
+            void scanForYearRange_withNonNumericOriginYear_throwsIllegalArgumentException(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("non_numeric_origin.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, ABC, 1993, 110.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.scanForYearRange(csvPath))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Error scanning line")
+                    .hasMessageContaining("Origin Year must be an integer");
+            }
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException for non-numeric development year")
+            void scanForYearRange_withNonNumericDevYear_throwsIllegalArgumentException(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("non_numeric_dev.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992, XYZ, 110.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.scanForYearRange(csvPath))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Error scanning line")
+                    .hasMessageContaining("Development Year must be an integer");
+            }
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException for empty origin year field")
+            void scanForYearRange_withEmptyOriginYear_throwsIllegalArgumentException(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("empty_origin_year.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, , 1993, 110.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.scanForYearRange(csvPath))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Error scanning line")
+                    .hasMessageContaining("Origin Year cannot be empty");
+            }
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException for empty development year field")
+            void scanForYearRange_withEmptyDevYear_throwsIllegalArgumentException(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("empty_dev_year.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992, , 110.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.scanForYearRange(csvPath))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Error scanning line")
+                    .hasMessageContaining("Development Year cannot be empty");
+            }
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException for missing columns (incomplete row)")
+            void scanForYearRange_withMissingColumns_throwsIllegalArgumentException(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("incomplete_row.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.scanForYearRange(csvPath))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Error scanning line")
+                    .hasMessageContaining("Expected at least 3 columns but found");
+            }
+
+            @Test
+            @DisplayName("Should include line number in error message for malformed data")
+            void scanForYearRange_withMalformedData_includesLineNumberInErrorMessage(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("error_on_line_3.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992, 1992, 110.0\n" +
+                                   "Comp, ABC, 1993, 170.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.scanForYearRange(csvPath))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Error scanning line 3");
+            }
+
+            @Test
+            @DisplayName("Should fail fast on first invalid record (not continue scanning)")
+            void scanForYearRange_withInvalidRecord_failsImmediately(@TempDir Path tempDir) throws IOException {
+                // Arrange - Error on line 2, but more valid data follows
+                Path csvPath = tempDir.resolve("error_early.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, INVALID, 1993, 170.0\n" +
+                                   "Comp, 1992, 1992, 110.0\n" +
+                                   "Comp, 1990, 1995, 200.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act & Assert - Should fail on line 2, not continue to scan remaining records
+                assertThatThrownBy(() -> reader.scanForYearRange(csvPath))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Error scanning line 2");
+            }
+        }
+
+        @Nested
+        @DisplayName("Integration with Real Test Files")
+        class IntegrationTests {
+
+            @Test
+            @DisplayName("Should successfully scan valid_claims.csv and return expected year range")
+            void scanForYearRange_withValidClaimsCsv_returnsExpectedRange() throws IOException {
+                // Arrange
+                Path validCsvPath = testResourcesPath.resolve("valid_claims.csv");
+
+                // Act
+                ClaimsReader.YearRange yearRange = reader.scanForYearRange(validCsvPath);
+
+                // Assert
+                assertThat(yearRange).isNotNull();
+                assertThat(yearRange.minOriginYear).isEqualTo(1990);
+                assertThat(yearRange.maxDevYear).isEqualTo(1993);
+                assertThat(yearRange.getNumberOfDevelopmentYears()).isEqualTo(4);
+            }
+
+            @Test
+            @DisplayName("Should fail when scanning invalid_header.csv")
+            void scanForYearRange_withInvalidHeaderCsv_throwsException() {
+                // Arrange
+                Path invalidHeaderPath = testResourcesPath.resolve("invalid_header.csv");
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.scanForYearRange(invalidHeaderPath))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Invalid CSV header");
+            }
+
+            @Test
+            @DisplayName("Should fail when scanning malformed_data.csv")
+            void scanForYearRange_withMalformedDataCsv_throwsException() {
+                // Arrange
+                Path malformedPath = testResourcesPath.resolve("malformed_data.csv");
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.scanForYearRange(malformedPath))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Error scanning line");
+            }
+
+            @Test
+            @DisplayName("Should successfully scan empty_incremental_values.csv (incremental values ignored)")
+            void scanForYearRange_withEmptyIncrementalValuesCsv_succeeds() throws IOException {
+                // Arrange
+                Path csvPath = testResourcesPath.resolve("empty_incremental_values.csv");
+
+                // Act
+                ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
+
+                // Assert - Should scan successfully since incremental values are not validated during scanning
+                assertThat(yearRange).isNotNull();
+                assertThat(yearRange.minOriginYear).isEqualTo(1990);
+                assertThat(yearRange.maxDevYear).isEqualTo(1993);
+            }
+
+            @Test
+            @DisplayName("Should fail when scanning empty.csv")
+            void scanForYearRange_withEmptyCsv_throwsException() {
+                // Arrange
+                Path emptyPath = testResourcesPath.resolve("empty.csv");
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.scanForYearRange(emptyPath))
+                    .isInstanceOf(IllegalArgumentException.class);
+            }
+        }
+
+        @Nested
+        @DisplayName("Memory Efficiency Tests")
+        class MemoryEfficiencyTests {
+
+            @Test
+            @DisplayName("Should track only min and max years (O(1) memory usage)")
+            void scanForYearRange_tracksOnlyMinMax_constantMemory(@TempDir Path tempDir) throws IOException {
+                // Arrange - Mix of years to verify min/max tracking
+                Path csvPath = tempDir.resolve("min_max_tracking.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 2000, 2005, 100.0\n" +
+                                   "Comp, 1995, 2010, 200.0\n" +
+                                   "Comp, 2005, 2008, 150.0\n" +
+                                   "Comp, 1990, 2015, 300.0\n" +
+                                   "Comp, 1998, 2000, 250.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act
+                ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
+
+                // Assert - Should have found absolute min origin year and max dev year
+                assertThat(yearRange.minOriginYear).isEqualTo(1990); // Minimum origin year
+                assertThat(yearRange.maxDevYear).isEqualTo(2015);    // Maximum development year
+            }
+
+            @Test
+            @DisplayName("Should update min year when encountering smaller origin year")
+            void scanForYearRange_updatesMinYear_whenSmallerOriginYearFound(@TempDir Path tempDir) throws IOException {
+                // Arrange - Descending origin years to test min tracking
+                Path csvPath = tempDir.resolve("descending_origin.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 2000, 2000, 100.0\n" +
+                                   "Comp, 1995, 1995, 200.0\n" +
+                                   "Comp, 1990, 1990, 300.0\n" +
+                                   "Comp, 1985, 1985, 400.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act
+                ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
+
+                // Assert
+                assertThat(yearRange.minOriginYear).isEqualTo(1985);
+            }
+
+            @Test
+            @DisplayName("Should update max year when encountering larger development year")
+            void scanForYearRange_updatesMaxYear_whenLargerDevYearFound(@TempDir Path tempDir) throws IOException {
+                // Arrange - Ascending development years to test max tracking
+                Path csvPath = tempDir.resolve("ascending_dev.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1990, 1990, 100.0\n" +
+                                   "Comp, 1990, 1995, 200.0\n" +
+                                   "Comp, 1990, 2000, 300.0\n" +
+                                   "Comp, 1990, 2010, 400.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act
+                ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
+
+                // Assert
+                assertThat(yearRange.maxDevYear).isEqualTo(2010);
+            }
+        }
+    }
+
+    // ========================================================================
     // YearRange Tests
     // ========================================================================
 

@@ -147,6 +147,98 @@ public class ClaimsReader {
     }
 
     /**
+     * Performs a lightweight scan of the CSV file to determine the year range.
+     *
+     * <p>This method performs a first-pass scan that extracts only the minimum origin year
+     * and maximum development year from the dataset. This is used by the streaming approach
+     * to determine triangle dimensions before the actual data processing pass.</p>
+     *
+     * <p><strong>Memory efficiency:</strong> This method uses O(1) memory regardless of file size,
+     * as it only tracks two integer values (min and max) while scanning through the file.</p>
+     *
+     * @param filePath the path to the CSV file to scan
+     * @return YearRange containing the minimum origin year and maximum development year found in the file
+     * @throws IOException if an I/O error occurs reading the file
+     * @throws IllegalArgumentException if the CSV format is invalid, data is malformed, or no valid records are found
+     * @throws NullPointerException if filePath is null
+     */
+    public YearRange scanForYearRange(Path filePath) throws IOException {
+        if (filePath == null) {
+            throw new NullPointerException("File path cannot be null");
+        }
+
+        logger.info("Scanning for year range in file: {}", filePath);
+
+        Integer minOriginYear = null;
+        Integer maxDevYear = null;
+
+        try (BufferedReader reader = Files.newBufferedReader(filePath)) {
+            CSVParser csvParser = CSVFormat.DEFAULT
+                .builder()
+                .setHeader()
+                .setSkipHeaderRecord(true)
+                .setTrim(true)
+                .setIgnoreEmptyLines(true)
+                .build()
+                .parse(reader);
+
+            // Validate header
+            validateHeader(csvParser.getHeaderNames());
+
+            // Scan records to find min/max years
+            int lineNumber = 1; // Header is line 0, data starts at line 1
+            for (CSVRecord csvRecord : csvParser) {
+                lineNumber++;
+                try {
+                    // Validate record has minimum required columns (need at least columns 0-2 for Product, Origin, Dev)
+                    if (csvRecord.size() < 3) {
+                        throw new IllegalArgumentException(
+                            String.format("Expected at least 3 columns but found %d", csvRecord.size())
+                        );
+                    }
+
+                    // Extract only the year fields - we don't need product or incremental value
+                    int originYear = parseInt(csvRecord.get(1), "Origin Year");
+                    int developmentYear = parseInt(csvRecord.get(2), "Development Year");
+
+                    // Validate years are in logical order (development >= origin)
+                    if (developmentYear < originYear) {
+                        throw new IllegalArgumentException(
+                            String.format("Development year (%d) cannot be before origin year (%d)",
+                                developmentYear, originYear)
+                        );
+                    }
+
+                    // Update min/max
+                    if (minOriginYear == null || originYear < minOriginYear) {
+                        minOriginYear = originYear;
+                    }
+                    if (maxDevYear == null || developmentYear > maxDevYear) {
+                        maxDevYear = developmentYear;
+                    }
+                } catch (IllegalArgumentException e) {
+                    String errorMsg = String.format(
+                        "Error scanning line %d: %s",
+                        lineNumber,
+                        e.getMessage()
+                    );
+                    logger.error(errorMsg, e);
+                    throw new IllegalArgumentException(errorMsg, e);
+                }
+            }
+
+            // Validate we found at least one record
+            if (minOriginYear == null || maxDevYear == null) {
+                throw new IllegalArgumentException("No valid claim records found in input file");
+            }
+
+            YearRange yearRange = new YearRange(minOriginYear, maxDevYear);
+            logger.info("Scanned year range: {}", yearRange);
+            return yearRange;
+        }
+    }
+
+    /**
      * Reads and parses a CSV file into a list of ClaimRecord objects.
      *
      * @param filePath the path to the CSV file to read
