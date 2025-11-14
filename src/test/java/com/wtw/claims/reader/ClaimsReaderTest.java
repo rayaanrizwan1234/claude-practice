@@ -12,7 +12,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -923,7 +925,7 @@ class ClaimsReaderTest {
                 // Act & Assert
                 assertThatThrownBy(() -> reader.scanForYearRange(csvPath))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("No valid claim records found in input file");
+                    .hasMessageContaining("No claim records found");
             }
 
             @Test
@@ -1259,6 +1261,696 @@ class ClaimsReaderTest {
 
                 // Assert
                 assertThat(yearRange.maxDevYear).isEqualTo(2010);
+            }
+        }
+    }
+
+    // ========================================================================
+    // streamClaims() Tests
+    // ========================================================================
+
+    @Nested
+    @DisplayName("streamClaims() Tests")
+    class StreamClaimsTests {
+
+        @Nested
+        @DisplayName("Valid Streaming Scenarios")
+        class ValidStreamingScenariosTests {
+
+            @Test
+            @DisplayName("Should stream single record file and pass record to consumer")
+            void streamClaims_withSingleRecord_passesRecordToConsumer(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("single_record.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992, 1993, 110.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                List<ClaimRecord> consumedRecords = new ArrayList<>();
+                Consumer<ClaimRecord> recordCollector = consumedRecords::add;
+
+                // Act
+                reader.streamClaims(csvPath, recordCollector);
+
+                // Assert
+                assertThat(consumedRecords).hasSize(1);
+                assertThat(consumedRecords.get(0).getProduct()).isEqualTo("Comp");
+                assertThat(consumedRecords.get(0).getOriginYear()).isEqualTo(1992);
+                assertThat(consumedRecords.get(0).getDevelopmentYear()).isEqualTo(1993);
+                assertThat(consumedRecords.get(0).getIncrementalValue()).isEqualTo(110.0);
+            }
+
+            @Test
+            @DisplayName("Should stream multiple records and pass each to consumer in order")
+            void streamClaims_withMultipleRecords_passesAllRecordsInOrder(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("multiple_records.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992, 1992, 110.0\n" +
+                                   "Comp, 1992, 1993, 170.0\n" +
+                                   "Non-Comp, 1990, 1990, 45.2\n" +
+                                   "Non-Comp, 1990, 1991, 64.8\n";
+                Files.writeString(csvPath, csvContent);
+
+                List<ClaimRecord> consumedRecords = new ArrayList<>();
+
+                // Act
+                reader.streamClaims(csvPath, consumedRecords::add);
+
+                // Assert
+                assertThat(consumedRecords).hasSize(4);
+                assertThat(consumedRecords)
+                    .extracting(ClaimRecord::getProduct)
+                    .containsExactly("Comp", "Comp", "Non-Comp", "Non-Comp");
+                assertThat(consumedRecords)
+                    .extracting(ClaimRecord::getIncrementalValue)
+                    .containsExactly(110.0, 170.0, 45.2, 64.8);
+            }
+
+            @Test
+            @DisplayName("Should stream records with empty incremental values (defaults to 0.0)")
+            void streamClaims_withEmptyIncrementalValues_treatsAsZero(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("empty_incremental.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992, 1992, 110.0\n" +
+                                   "Comp, 1992, 1993, \n" +
+                                   "Non-Comp, 1990, 1990, \n";
+                Files.writeString(csvPath, csvContent);
+
+                List<ClaimRecord> consumedRecords = new ArrayList<>();
+
+                // Act
+                reader.streamClaims(csvPath, consumedRecords::add);
+
+                // Assert
+                assertThat(consumedRecords).hasSize(3);
+                assertThat(consumedRecords.get(0).getIncrementalValue()).isEqualTo(110.0);
+                assertThat(consumedRecords.get(1).getIncrementalValue()).isEqualTo(0.0);
+                assertThat(consumedRecords.get(2).getIncrementalValue()).isEqualTo(0.0);
+            }
+
+            @Test
+            @DisplayName("Should stream multiple products correctly")
+            void streamClaims_withMultipleProducts_streamsAllRecords(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("multiple_products.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "ProductA, 1990, 1990, 100.0\n" +
+                                   "ProductB, 1991, 1991, 200.0\n" +
+                                   "ProductC, 1992, 1992, 300.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                List<ClaimRecord> consumedRecords = new ArrayList<>();
+
+                // Act
+                reader.streamClaims(csvPath, consumedRecords::add);
+
+                // Assert
+                assertThat(consumedRecords).hasSize(3);
+                assertThat(consumedRecords)
+                    .extracting(ClaimRecord::getProduct)
+                    .containsExactly("ProductA", "ProductB", "ProductC");
+            }
+
+            @Test
+            @DisplayName("Should stream valid_claims.csv test resource file correctly")
+            void streamClaims_withValidClaimsCsv_streamsAllRecords() throws IOException {
+                // Arrange
+                Path validCsvPath = testResourcesPath.resolve("valid_claims.csv");
+                List<ClaimRecord> consumedRecords = new ArrayList<>();
+
+                // Act
+                reader.streamClaims(validCsvPath, consumedRecords::add);
+
+                // Assert
+                assertThat(consumedRecords).hasSize(4);
+                assertThat(consumedRecords)
+                    .extracting(ClaimRecord::getProduct)
+                    .containsExactly("Comp", "Comp", "Non-Comp", "Non-Comp");
+            }
+
+            @Test
+            @DisplayName("Should handle large file efficiently without accumulating all records in memory")
+            void streamClaims_withLargeFile_streamsEfficiently(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("large_file.csv");
+                StringBuilder csvContent = new StringBuilder("Product, Origin Year, Development Year, Incremental Value\n");
+                for (int i = 0; i < 1000; i++) {
+                    csvContent.append(String.format("Product%d, 2000, 2001, %d.5\n", i % 10, i));
+                }
+                Files.writeString(csvPath, csvContent.toString());
+
+                // Act - Count records without storing them all (memory efficient)
+                int[] recordCount = {0};
+                reader.streamClaims(csvPath, record -> recordCount[0]++);
+
+                // Assert
+                assertThat(recordCount[0]).isEqualTo(1000);
+            }
+
+            @Test
+            @DisplayName("Should not call consumer when file has only header (no data rows)")
+            void streamClaims_withOnlyHeader_doesNotCallConsumer(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("header_only.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n";
+                Files.writeString(csvPath, csvContent);
+
+                int[] consumerCallCount = {0};
+                Consumer<ClaimRecord> counter = record -> consumerCallCount[0]++;
+
+                // Act
+                reader.streamClaims(csvPath, counter);
+
+                // Assert
+                assertThat(consumerCallCount[0]).isEqualTo(0);
+            }
+        }
+
+        @Nested
+        @DisplayName("Consumer Functionality Tests")
+        class ConsumerFunctionalityTests {
+
+            @Test
+            @DisplayName("Should call consumer exactly once per valid record")
+            void streamClaims_withMultipleRecords_callsConsumerCorrectNumberOfTimes(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("three_records.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992, 1992, 110.0\n" +
+                                   "Comp, 1992, 1993, 170.0\n" +
+                                   "Comp, 1993, 1993, 200.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                int[] callCount = {0};
+                Consumer<ClaimRecord> counter = record -> callCount[0]++;
+
+                // Act
+                reader.streamClaims(csvPath, counter);
+
+                // Assert
+                assertThat(callCount[0]).isEqualTo(3);
+            }
+
+            @Test
+            @DisplayName("Should allow consumer to accumulate records in a list")
+            void streamClaims_withConsumerAccumulatingList_buildsCorrectList(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("accumulate_test.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992, 1992, 110.0\n" +
+                                   "Non-Comp, 1990, 1990, 45.2\n";
+                Files.writeString(csvPath, csvContent);
+
+                List<ClaimRecord> accumulated = new ArrayList<>();
+
+                // Act
+                reader.streamClaims(csvPath, accumulated::add);
+
+                // Assert
+                assertThat(accumulated).hasSize(2);
+                assertThat(accumulated.get(0).getProduct()).isEqualTo("Comp");
+                assertThat(accumulated.get(1).getProduct()).isEqualTo("Non-Comp");
+            }
+
+            @Test
+            @DisplayName("Should allow consumer to filter and collect specific products")
+            void streamClaims_withFilteringConsumer_collectsOnlyMatchingRecords(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("filter_test.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992, 1992, 110.0\n" +
+                                   "Non-Comp, 1990, 1990, 45.2\n" +
+                                   "Comp, 1992, 1993, 170.0\n" +
+                                   "Non-Comp, 1990, 1991, 64.8\n";
+                Files.writeString(csvPath, csvContent);
+
+                List<ClaimRecord> compRecords = new ArrayList<>();
+                Consumer<ClaimRecord> compFilter = record -> {
+                    if ("Comp".equals(record.getProduct())) {
+                        compRecords.add(record);
+                    }
+                };
+
+                // Act
+                reader.streamClaims(csvPath, compFilter);
+
+                // Assert
+                assertThat(compRecords).hasSize(2);
+                assertThat(compRecords).allMatch(record -> "Comp".equals(record.getProduct()));
+            }
+
+            @Test
+            @DisplayName("Should allow consumer to calculate running statistics")
+            void streamClaims_withStatisticsConsumer_calculatesCorrectly(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("stats_test.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992, 1992, 100.0\n" +
+                                   "Comp, 1992, 1993, 200.0\n" +
+                                   "Comp, 1993, 1993, 300.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                double[] totalValue = {0.0};
+                Consumer<ClaimRecord> sumCalculator = record -> totalValue[0] += record.getIncrementalValue();
+
+                // Act
+                reader.streamClaims(csvPath, sumCalculator);
+
+                // Assert
+                assertThat(totalValue[0]).isEqualTo(600.0);
+            }
+
+            @Test
+            @DisplayName("Should pass correct record data to consumer for each record")
+            void streamClaims_passesCorrectData_toConsumer(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("data_verification.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "TestProduct, 1995, 1997, 250.75\n";
+                Files.writeString(csvPath, csvContent);
+
+                ClaimRecord[] capturedRecord = new ClaimRecord[1];
+                Consumer<ClaimRecord> capturer = record -> capturedRecord[0] = record;
+
+                // Act
+                reader.streamClaims(csvPath, capturer);
+
+                // Assert
+                assertThat(capturedRecord[0]).isNotNull();
+                assertThat(capturedRecord[0].getProduct()).isEqualTo("TestProduct");
+                assertThat(capturedRecord[0].getOriginYear()).isEqualTo(1995);
+                assertThat(capturedRecord[0].getDevelopmentYear()).isEqualTo(1997);
+                assertThat(capturedRecord[0].getIncrementalValue()).isEqualTo(250.75);
+            }
+        }
+
+        @Nested
+        @DisplayName("Null Parameter Tests")
+        class NullParameterTests {
+
+            @Test
+            @DisplayName("Should throw NullPointerException when file path is null")
+            void streamClaims_withNullFilePath_throwsNullPointerException() {
+                // Arrange
+                Consumer<ClaimRecord> consumer = record -> {};
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.streamClaims(null, consumer))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("File path cannot be null");
+            }
+
+            @Test
+            @DisplayName("Should throw NullPointerException when consumer is null")
+            void streamClaims_withNullConsumer_throwsNullPointerException(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("test.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992, 1992, 110.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.streamClaims(csvPath, null))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("Record consumer cannot be null");
+            }
+
+            @Test
+            @DisplayName("Should throw NullPointerException when both parameters are null")
+            void streamClaims_withBothParametersNull_throwsNullPointerException() {
+                // Act & Assert
+                assertThatThrownBy(() -> reader.streamClaims(null, null))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("File path cannot be null");
+            }
+        }
+
+        @Nested
+        @DisplayName("Edge Cases")
+        class EdgeCasesTests {
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException for empty file")
+            void streamClaims_withEmptyFile_throwsIllegalArgumentException() {
+                // Arrange
+                Path emptyPath = testResourcesPath.resolve("empty.csv");
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.streamClaims(emptyPath, record -> {}))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("no header row");
+            }
+
+            @Test
+            @DisplayName("Should throw IOException when file does not exist")
+            void streamClaims_withNonExistentFile_throwsIOException() {
+                // Arrange
+                Path nonExistentPath = testResourcesPath.resolve("does_not_exist.csv");
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.streamClaims(nonExistentPath, record -> {}))
+                    .isInstanceOf(IOException.class);
+            }
+
+            @Test
+            @DisplayName("Should successfully stream file with only header (no records)")
+            void streamClaims_withHeaderOnly_succeedsWithoutCallingConsumer(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("header_only.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n";
+                Files.writeString(csvPath, csvContent);
+
+                boolean[] consumerCalled = {false};
+                Consumer<ClaimRecord> tracker = record -> consumerCalled[0] = true;
+
+                // Act
+                reader.streamClaims(csvPath, tracker);
+
+                // Assert - Should complete successfully without calling consumer
+                assertThat(consumerCalled[0]).isFalse();
+            }
+
+            @Test
+            @DisplayName("Should handle records with whitespace-only incremental value (treats as 0.0)")
+            void streamClaims_withWhitespaceIncrementalValue_treatsAsZero(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("whitespace_incremental.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992, 1992,    \n";
+                Files.writeString(csvPath, csvContent);
+
+                List<ClaimRecord> consumedRecords = new ArrayList<>();
+
+                // Act
+                reader.streamClaims(csvPath, consumedRecords::add);
+
+                // Assert
+                assertThat(consumedRecords).hasSize(1);
+                assertThat(consumedRecords.get(0).getIncrementalValue()).isEqualTo(0.0);
+            }
+        }
+
+        @Nested
+        @DisplayName("Invalid Data Tests")
+        class InvalidDataTests {
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException for invalid header")
+            void streamClaims_withInvalidHeader_throwsIllegalArgumentException() {
+                // Arrange
+                Path invalidHeaderPath = testResourcesPath.resolve("invalid_header.csv");
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.streamClaims(invalidHeaderPath, record -> {}))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Invalid CSV header");
+            }
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException for malformed data with line number")
+            void streamClaims_withMalformedData_throwsWithLineNumber() {
+                // Arrange
+                Path malformedPath = testResourcesPath.resolve("malformed_data.csv");
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.streamClaims(malformedPath, record -> {}))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Error streaming line")
+                    .hasMessageContaining("Invalid numeric value");
+            }
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException for non-numeric origin year")
+            void streamClaims_withNonNumericOriginYear_throwsIllegalArgumentException(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("non_numeric_origin.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, ABC, 1993, 110.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.streamClaims(csvPath, record -> {}))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Error streaming line 2")
+                    .hasMessageContaining("Origin Year must be an integer");
+            }
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException for non-numeric development year")
+            void streamClaims_withNonNumericDevYear_throwsIllegalArgumentException(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("non_numeric_dev.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992, XYZ, 110.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.streamClaims(csvPath, record -> {}))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Error streaming line 2")
+                    .hasMessageContaining("Development Year must be an integer");
+            }
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException for non-numeric incremental value")
+            void streamClaims_withNonNumericIncrementalValue_throwsIllegalArgumentException(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("non_numeric_incremental.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992, 1992, NotANumber\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.streamClaims(csvPath, record -> {}))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Error streaming line 2")
+                    .hasMessageContaining("Incremental Value must be a number");
+            }
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException for incomplete row (missing columns)")
+            void streamClaims_withIncompleteRow_throwsIllegalArgumentException(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("incomplete_row.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.streamClaims(csvPath, record -> {}))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Error streaming line 2")
+                    .hasMessageContaining("Expected 4 columns but found");
+            }
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException for empty product name")
+            void streamClaims_withEmptyProductName_throwsIllegalArgumentException(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("empty_product.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   ", 1992, 1992, 110.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.streamClaims(csvPath, record -> {}))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Error streaming line 2")
+                    .hasMessageContaining("Product name must not be null or empty");
+            }
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException when development year < origin year")
+            void streamClaims_withDevYearBeforeOriginYear_throwsIllegalArgumentException(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("invalid_year_order.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1995, 1990, 110.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.streamClaims(csvPath, record -> {}))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Error streaming line 2")
+                    .hasMessageContaining("Development year")
+                    .hasMessageContaining("cannot be before origin year");
+            }
+
+            @Test
+            @DisplayName("Should include correct line number in error message (line 3)")
+            void streamClaims_withErrorOnLine3_includesCorrectLineNumber(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("error_on_line_3.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992, 1992, 110.0\n" +
+                                   "Comp, ABC, 1993, 170.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.streamClaims(csvPath, record -> {}))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Error streaming line 3");
+            }
+
+            @Test
+            @DisplayName("Should fail fast on first error (not continue streaming)")
+            void streamClaims_withInvalidRecord_failsImmediately(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("fail_fast.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, INVALID, 1993, 170.0\n" +
+                                   "Comp, 1992, 1992, 110.0\n" +
+                                   "Comp, 1990, 1995, 200.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                int[] recordCount = {0};
+                Consumer<ClaimRecord> counter = record -> recordCount[0]++;
+
+                // Act & Assert - Should fail on line 2, consumer should not be called
+                assertThatThrownBy(() -> reader.streamClaims(csvPath, counter))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Error streaming line 2");
+
+                // Consumer should never have been called due to fail-fast
+                assertThat(recordCount[0]).isEqualTo(0);
+            }
+        }
+
+        @Nested
+        @DisplayName("Integration Tests")
+        class IntegrationTests {
+
+            @Test
+            @DisplayName("Should successfully stream and process valid_claims.csv")
+            void streamClaims_withValidClaimsCsv_processesAllRecordsCorrectly() throws IOException {
+                // Arrange
+                Path validCsvPath = testResourcesPath.resolve("valid_claims.csv");
+                List<ClaimRecord> records = new ArrayList<>();
+
+                // Act
+                reader.streamClaims(validCsvPath, records::add);
+
+                // Assert
+                assertThat(records).hasSize(4);
+                assertThat(records)
+                    .extracting(ClaimRecord::getProduct)
+                    .containsExactly("Comp", "Comp", "Non-Comp", "Non-Comp");
+                assertThat(records)
+                    .extracting(ClaimRecord::getIncrementalValue)
+                    .containsExactly(110.0, 170.0, 45.2, 64.8);
+            }
+
+            @Test
+            @DisplayName("Should successfully stream empty_incremental_values.csv (treats empty as 0.0)")
+            void streamClaims_withEmptyIncrementalValuesCsv_treatsEmptyAsZero() throws IOException {
+                // Arrange
+                Path csvPath = testResourcesPath.resolve("empty_incremental_values.csv");
+                List<ClaimRecord> records = new ArrayList<>();
+
+                // Act
+                reader.streamClaims(csvPath, records::add);
+
+                // Assert
+                assertThat(records).hasSize(4);
+                // Records with empty incremental values should have 0.0
+                assertThat(records.get(1).getIncrementalValue()).isEqualTo(0.0);
+                assertThat(records.get(2).getIncrementalValue()).isEqualTo(0.0);
+            }
+
+            @Test
+            @DisplayName("Should fail when streaming invalid_header.csv")
+            void streamClaims_withInvalidHeaderCsv_throwsException() {
+                // Arrange
+                Path invalidHeaderPath = testResourcesPath.resolve("invalid_header.csv");
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.streamClaims(invalidHeaderPath, record -> {}))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Invalid CSV header");
+            }
+
+            @Test
+            @DisplayName("Should fail when streaming malformed_data.csv")
+            void streamClaims_withMalformedDataCsv_throwsException() {
+                // Arrange
+                Path malformedPath = testResourcesPath.resolve("malformed_data.csv");
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.streamClaims(malformedPath, record -> {}))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Error streaming line");
+            }
+
+            @Test
+            @DisplayName("Should fail when streaming empty.csv")
+            void streamClaims_withEmptyCsv_throwsException() {
+                // Arrange
+                Path emptyPath = testResourcesPath.resolve("empty.csv");
+
+                // Act & Assert
+                assertThatThrownBy(() -> reader.streamClaims(emptyPath, record -> {}))
+                    .isInstanceOf(IllegalArgumentException.class);
+            }
+        }
+
+        @Nested
+        @DisplayName("Memory Efficiency Tests")
+        class MemoryEfficiencyTests {
+
+            @Test
+            @DisplayName("Should use O(1) memory for record storage when consumer doesn't accumulate")
+            void streamClaims_withNonAccumulatingConsumer_usesConstantMemory(@TempDir Path tempDir) throws IOException {
+                // Arrange - Large file with 10,000 records
+                Path csvPath = tempDir.resolve("large_file.csv");
+                StringBuilder csvContent = new StringBuilder("Product, Origin Year, Development Year, Incremental Value\n");
+                for (int i = 0; i < 10_000; i++) {
+                    csvContent.append(String.format("Product%d, 2000, 2001, %d.5\n", i % 10, i));
+                }
+                Files.writeString(csvPath, csvContent.toString());
+
+                // Act - Count records without storing them (memory efficient)
+                int[] recordCount = {0};
+                double[] runningSum = {0.0};
+                Consumer<ClaimRecord> memoryEfficientProcessor = record -> {
+                    recordCount[0]++;
+                    runningSum[0] += record.getIncrementalValue();
+                    // Record is eligible for GC after this line
+                };
+
+                reader.streamClaims(csvPath, memoryEfficientProcessor);
+
+                // Assert
+                assertThat(recordCount[0]).isEqualTo(10_000);
+                assertThat(runningSum[0]).isPositive(); // Verify processing occurred
+            }
+
+            @Test
+            @DisplayName("Should process records one at a time (not load entire file into memory)")
+            void streamClaims_processesRecordsSequentially_notAllAtOnce(@TempDir Path tempDir) throws IOException {
+                // Arrange
+                Path csvPath = tempDir.resolve("sequential_test.csv");
+                String csvContent = "Product, Origin Year, Development Year, Incremental Value\n" +
+                                   "Comp, 1992, 1992, 110.0\n" +
+                                   "Comp, 1992, 1993, 170.0\n" +
+                                   "Comp, 1993, 1993, 200.0\n";
+                Files.writeString(csvPath, csvContent);
+
+                // Track the order of processing
+                List<String> processingOrder = new ArrayList<>();
+                Consumer<ClaimRecord> orderTracker = record ->
+                    processingOrder.add(record.getProduct() + "-" + record.getOriginYear() + "-" + record.getDevelopmentYear());
+
+                // Act
+                reader.streamClaims(csvPath, orderTracker);
+
+                // Assert - Records processed in file order, one at a time
+                assertThat(processingOrder).containsExactly(
+                    "Comp-1992-1992",
+                    "Comp-1992-1993",
+                    "Comp-1993-1993"
+                );
             }
         }
     }

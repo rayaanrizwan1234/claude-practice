@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Reads and parses claims data from CSV files into ClaimRecord objects.
@@ -172,15 +173,15 @@ public class ClaimsReader {
         Integer minOriginYear = null;
         Integer maxDevYear = null;
 
-        try (BufferedReader reader = Files.newBufferedReader(filePath)) {
-            CSVParser csvParser = CSVFormat.DEFAULT
-                .builder()
-                .setHeader()
-                .setSkipHeaderRecord(true)
-                .setTrim(true)
-                .setIgnoreEmptyLines(true)
-                .build()
-                .parse(reader);
+        try (BufferedReader reader = Files.newBufferedReader(filePath);
+             CSVParser csvParser = CSVFormat.DEFAULT
+                 .builder()
+                 .setHeader()
+                 .setSkipHeaderRecord(true)
+                 .setTrim(true)
+                 .setIgnoreEmptyLines(true)
+                 .build()
+                 .parse(reader)) {
 
             // Validate header
             validateHeader(csvParser.getHeaderNames());
@@ -229,12 +230,98 @@ public class ClaimsReader {
 
             // Validate we found at least one record
             if (minOriginYear == null || maxDevYear == null) {
-                throw new IllegalArgumentException("No valid claim records found in input file");
+                throw new IllegalArgumentException("No claim records found in input file");
             }
 
             YearRange yearRange = new YearRange(minOriginYear, maxDevYear);
             logger.info("Scanned year range: {}", yearRange);
             return yearRange;
+        }
+    }
+
+    /**
+     * Streams claims data from a CSV file, processing records one at a time using a consumer.
+     *
+     * <p>This method performs a memory-efficient streaming read where each record is:
+     * <ol>
+     *   <li>Parsed from CSV</li>
+     *   <li>Validated</li>
+     *   <li>Passed to the consumer for processing</li>
+     *   <li>Immediately eligible for garbage collection</li>
+     * </ol>
+     *
+     * <p><strong>Memory efficiency:</strong> This method uses O(1) memory for data storage
+     * (excluding the consumer's internal state). Records are processed one at a time and
+     * not accumulated in memory, making it suitable for very large files.</p>
+     *
+     * <p><strong>Usage example:</strong></p>
+     * <pre>
+     * ClaimsReader reader = new ClaimsReader();
+     * Map&lt;String, ClaimsTriangle&gt; triangles = new HashMap&lt;&gt;();
+     *
+     * reader.streamClaims(filePath, record -&gt; {
+     *     // Process each record as it's read
+     *     String product = record.getProduct();
+     *     ClaimsTriangle triangle = triangles.computeIfAbsent(
+     *         product, k -&gt; new ClaimsTriangle(product, minYear, maxYear)
+     *     );
+     *     triangle.addRecord(record);
+     * });
+     * </pre>
+     *
+     * @param filePath the path to the CSV file to stream
+     * @param recordConsumer consumer function that processes each ClaimRecord as it's read
+     * @throws IOException if an I/O error occurs reading the file
+     * @throws IllegalArgumentException if the CSV format is invalid or data is malformed
+     * @throws NullPointerException if filePath or recordConsumer is null
+     */
+    public void streamClaims(Path filePath, Consumer<ClaimRecord> recordConsumer) throws IOException {
+        if (filePath == null) {
+            throw new NullPointerException("File path cannot be null");
+        }
+        if (recordConsumer == null) {
+            throw new NullPointerException("Record consumer cannot be null");
+        }
+
+        logger.info("Streaming claims from file: {}", filePath);
+
+        int recordCount = 0;
+
+        try (BufferedReader reader = Files.newBufferedReader(filePath);
+             CSVParser csvParser = CSVFormat.DEFAULT
+                 .builder()
+                 .setHeader()
+                 .setSkipHeaderRecord(true)
+                 .setTrim(true)
+                 .setIgnoreEmptyLines(true)
+                 .build()
+                 .parse(reader)) {
+
+            // Validate header
+            validateHeader(csvParser.getHeaderNames());
+
+            // Stream records one at a time
+            int lineNumber = 1; // Header is line 0, data starts at line 1
+            for (CSVRecord csvRecord : csvParser) {
+                lineNumber++;
+                try {
+                    ClaimRecord claimRecord = parseRecord(csvRecord, lineNumber);
+                    recordConsumer.accept(claimRecord);
+                    recordCount++;
+                    // claimRecord is now eligible for garbage collection
+                } catch (IllegalArgumentException e) {
+                    // Catches IllegalArgumentException and its subclass NumberFormatException
+                    String errorMsg = String.format(
+                        "Error streaming line %d: %s",
+                        lineNumber,
+                        e.getMessage()
+                    );
+                    logger.error(errorMsg, e);
+                    throw new IllegalArgumentException(errorMsg, e);
+                }
+            }
+
+            logger.info("Successfully streamed {} claim records from {}", recordCount, filePath);
         }
     }
 
@@ -256,15 +343,15 @@ public class ClaimsReader {
 
         List<ClaimRecord> records = new ArrayList<>();
 
-        try (BufferedReader reader = Files.newBufferedReader(filePath)) {
-            CSVParser csvParser = CSVFormat.DEFAULT
-                .builder()
-                .setHeader()
-                .setSkipHeaderRecord(true)
-                .setTrim(true)
-                .setIgnoreEmptyLines(true)
-                .build()
-                .parse(reader);
+        try (BufferedReader reader = Files.newBufferedReader(filePath);
+             CSVParser csvParser = CSVFormat.DEFAULT
+                 .builder()
+                 .setHeader()
+                 .setSkipHeaderRecord(true)
+                 .setTrim(true)
+                 .setIgnoreEmptyLines(true)
+                 .build()
+                 .parse(reader)) {
 
             // Validate header
             validateHeader(csvParser.getHeaderNames());
