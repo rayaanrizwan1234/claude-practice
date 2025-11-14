@@ -49,7 +49,7 @@ PEAK:           100 MB (vs 170 MB before) = 41% reduction!
 - [ ] Add fields: `minOriginYear`, `maxDevYear`
 - [ ] Add constructor with validation
 - [ ] Add `getNumberOfDevelopmentYears()` helper method
-- [ ] Add `toString()`, `equals()`, `hashCode()` for testing
+- [ ] Add `toString()` for debugging (optional but useful for logging)
 
 ### Implementation
 
@@ -59,13 +59,26 @@ PEAK:           100 MB (vs 170 MB before) = 41% reduction!
 
 ```java
 /**
- * Data class representing the year range found in a claims dataset.
+ * Simple data class representing the year range found in a claims dataset.
  * Used by the streaming approach to avoid loading all records into memory.
+ *
+ * <p>This is a minimal data holder - no equals/hashCode needed as it's only
+ * used to pass data between methods, not for comparisons or collections.</p>
  */
 public static class YearRange {
+    /** The minimum origin year found in the dataset */
     public final int minOriginYear;
+
+    /** The maximum development year found in the dataset */
     public final int maxDevYear;
 
+    /**
+     * Creates a new YearRange with the specified boundaries.
+     *
+     * @param minOriginYear the minimum origin year
+     * @param maxDevYear the maximum development year
+     * @throws IllegalArgumentException if maxDevYear < minOriginYear
+     */
     public YearRange(int minOriginYear, int maxDevYear) {
         if (maxDevYear < minOriginYear) {
             throw new IllegalArgumentException(
@@ -77,6 +90,11 @@ public static class YearRange {
         this.maxDevYear = maxDevYear;
     }
 
+    /**
+     * Calculates the number of development years in this range.
+     *
+     * @return the number of years (inclusive)
+     */
     public int getNumberOfDevelopmentYears() {
         return maxDevYear - minOriginYear + 1;
     }
@@ -85,19 +103,6 @@ public static class YearRange {
     public String toString() {
         return String.format("YearRange{%d-%d (%d years)}",
             minOriginYear, maxDevYear, getNumberOfDevelopmentYears());
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (!(obj instanceof YearRange)) return false;
-        YearRange other = (YearRange) obj;
-        return minOriginYear == other.minOriginYear && maxDevYear == other.maxDevYear;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(minOriginYear, maxDevYear);
     }
 }
 ```
@@ -140,21 +145,11 @@ class YearRangeTests {
     }
 
     @Test
-    @DisplayName("Should implement equals correctly")
-    void equals_withSameValues_returnsTrue() {
-        YearRange range1 = new ClaimsReader.YearRange(1990, 1993);
-        YearRange range2 = new ClaimsReader.YearRange(1990, 1993);
+    @DisplayName("Should implement toString for debugging")
+    void toString_returnsFormattedString() {
+        YearRange range = new ClaimsReader.YearRange(1990, 1993);
 
-        assertThat(range1).isEqualTo(range2);
-    }
-
-    @Test
-    @DisplayName("Should implement hashCode correctly")
-    void hashCode_withSameValues_returnsSameHash() {
-        YearRange range1 = new ClaimsReader.YearRange(1990, 1993);
-        YearRange range2 = new ClaimsReader.YearRange(1990, 1993);
-
-        assertThat(range1.hashCode()).isEqualTo(range2.hashCode());
+        assertThat(range.toString()).contains("1990", "1993", "4");
     }
 }
 ```
