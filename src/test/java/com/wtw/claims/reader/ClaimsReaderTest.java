@@ -747,4 +747,508 @@ class ClaimsReaderTest {
             assertThat(records.get(0).getIncrementalValue()).isEqualTo(110.0);
         }
     }
+
+    // ========================================================================
+    // YearRange Tests
+    // ========================================================================
+
+    @Nested
+    @DisplayName("YearRange Tests")
+    class YearRangeTests {
+
+        @Nested
+        @DisplayName("Constructor Tests")
+        class ConstructorTests {
+
+            @Test
+            @DisplayName("Should create YearRange with valid consecutive years")
+            void createYearRange_withConsecutiveYears_succeeds() {
+                // Act
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1990, 1993);
+
+                // Assert
+                assertThat(yearRange).isNotNull();
+                assertThat(yearRange.minOriginYear).isEqualTo(1990);
+                assertThat(yearRange.maxDevYear).isEqualTo(1993);
+            }
+
+            @Test
+            @DisplayName("Should create YearRange with same min and max year")
+            void createYearRange_withSameMinMax_succeeds() {
+                // Act
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(2000, 2000);
+
+                // Assert
+                assertThat(yearRange).isNotNull();
+                assertThat(yearRange.minOriginYear).isEqualTo(2000);
+                assertThat(yearRange.maxDevYear).isEqualTo(2000);
+            }
+
+            @Test
+            @DisplayName("Should create YearRange with large year gap")
+            void createYearRange_withLargeYearGap_succeeds() {
+                // Act
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1950, 2050);
+
+                // Assert
+                assertThat(yearRange).isNotNull();
+                assertThat(yearRange.minOriginYear).isEqualTo(1950);
+                assertThat(yearRange.maxDevYear).isEqualTo(2050);
+            }
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException when maxDevYear is less than minOriginYear")
+            void createYearRange_withMaxLessThanMin_throwsIllegalArgumentException() {
+                // Act & Assert
+                assertThatThrownBy(() -> new ClaimsReader.YearRange(1995, 1990))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Max development year")
+                    .hasMessageContaining("cannot be less than min origin year")
+                    .hasMessageContaining("1990")
+                    .hasMessageContaining("1995");
+            }
+
+            @Test
+            @DisplayName("Should throw IllegalArgumentException with descriptive message for invalid range")
+            void createYearRange_withInvalidRange_includesYearsInErrorMessage() {
+                // Act & Assert
+                assertThatThrownBy(() -> new ClaimsReader.YearRange(2020, 2015))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("2015")
+                    .hasMessageContaining("2020");
+            }
+
+            @Test
+            @DisplayName("Should create YearRange with negative years (BC dates)")
+            void createYearRange_withNegativeYears_succeeds() {
+                // Act
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(-100, -50);
+
+                // Assert
+                assertThat(yearRange).isNotNull();
+                assertThat(yearRange.minOriginYear).isEqualTo(-100);
+                assertThat(yearRange.maxDevYear).isEqualTo(-50);
+            }
+
+            @Test
+            @DisplayName("Should create YearRange with zero as min year")
+            void createYearRange_withZeroAsMin_succeeds() {
+                // Act
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(0, 10);
+
+                // Assert
+                assertThat(yearRange).isNotNull();
+                assertThat(yearRange.minOriginYear).isEqualTo(0);
+                assertThat(yearRange.maxDevYear).isEqualTo(10);
+            }
+
+            @Test
+            @DisplayName("Should create YearRange with zero as max year")
+            void createYearRange_withZeroAsMax_succeeds() {
+                // Act
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(-10, 0);
+
+                // Assert
+                assertThat(yearRange).isNotNull();
+                assertThat(yearRange.minOriginYear).isEqualTo(-10);
+                assertThat(yearRange.maxDevYear).isEqualTo(0);
+            }
+
+            @Test
+            @DisplayName("Should create YearRange with both years as zero")
+            void createYearRange_withBothZero_succeeds() {
+                // Act
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(0, 0);
+
+                // Assert
+                assertThat(yearRange).isNotNull();
+                assertThat(yearRange.minOriginYear).isEqualTo(0);
+                assertThat(yearRange.maxDevYear).isEqualTo(0);
+            }
+
+            @Test
+            @DisplayName("Should create YearRange with typical insurance years (1990-2025)")
+            void createYearRange_withTypicalInsuranceYears_succeeds() {
+                // Act
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1990, 2025);
+
+                // Assert
+                assertThat(yearRange).isNotNull();
+                assertThat(yearRange.minOriginYear).isEqualTo(1990);
+                assertThat(yearRange.maxDevYear).isEqualTo(2025);
+            }
+
+            @Test
+            @DisplayName("Should fail validation with large inverted range")
+            void createYearRange_withLargeInvertedRange_throwsIllegalArgumentException() {
+                // Act & Assert
+                assertThatThrownBy(() -> new ClaimsReader.YearRange(2100, 1900))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Max development year")
+                    .hasMessageContaining("cannot be less than min origin year");
+            }
+        }
+
+        @Nested
+        @DisplayName("getNumberOfDevelopmentYears() Tests")
+        class GetNumberOfDevelopmentYearsTests {
+
+            @Test
+            @DisplayName("Should calculate correct number of development years for consecutive years")
+            void getNumberOfDevelopmentYears_withConsecutiveYears_returnsCorrectCount() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1990, 1993);
+
+                // Act
+                int numberOfYears = yearRange.getNumberOfDevelopmentYears();
+
+                // Assert
+                assertThat(numberOfYears).isEqualTo(4); // 1990, 1991, 1992, 1993
+            }
+
+            @Test
+            @DisplayName("Should return 1 when min and max year are the same")
+            void getNumberOfDevelopmentYears_withSameMinMax_returnsOne() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(2000, 2000);
+
+                // Act
+                int numberOfYears = yearRange.getNumberOfDevelopmentYears();
+
+                // Assert
+                assertThat(numberOfYears).isEqualTo(1);
+            }
+
+            @Test
+            @DisplayName("Should calculate correct number for large year gap")
+            void getNumberOfDevelopmentYears_withLargeGap_returnsCorrectCount() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1950, 2050);
+
+                // Act
+                int numberOfYears = yearRange.getNumberOfDevelopmentYears();
+
+                // Assert
+                assertThat(numberOfYears).isEqualTo(101); // 1950 to 2050 inclusive
+            }
+
+            @Test
+            @DisplayName("Should calculate correct number for single year gap")
+            void getNumberOfDevelopmentYears_withOneYearGap_returnsTwo() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(2000, 2001);
+
+                // Act
+                int numberOfYears = yearRange.getNumberOfDevelopmentYears();
+
+                // Assert
+                assertThat(numberOfYears).isEqualTo(2);
+            }
+
+            @Test
+            @DisplayName("Should handle negative years correctly in calculation")
+            void getNumberOfDevelopmentYears_withNegativeYears_returnsCorrectCount() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(-100, -50);
+
+                // Act
+                int numberOfYears = yearRange.getNumberOfDevelopmentYears();
+
+                // Assert
+                assertThat(numberOfYears).isEqualTo(51); // -100 to -50 inclusive
+            }
+
+            @Test
+            @DisplayName("Should handle range crossing zero correctly")
+            void getNumberOfDevelopmentYears_crossingZero_returnsCorrectCount() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(-5, 5);
+
+                // Act
+                int numberOfYears = yearRange.getNumberOfDevelopmentYears();
+
+                // Assert
+                assertThat(numberOfYears).isEqualTo(11); // -5, -4, ..., 0, ..., 4, 5
+            }
+
+            @Test
+            @DisplayName("Should verify formula: maxDevYear - minOriginYear + 1")
+            void getNumberOfDevelopmentYears_verifyFormula_matchesExpectedCalculation() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1990, 1999);
+
+                // Act
+                int numberOfYears = yearRange.getNumberOfDevelopmentYears();
+                int expectedYears = 1999 - 1990 + 1;
+
+                // Assert
+                assertThat(numberOfYears).isEqualTo(expectedYears).isEqualTo(10);
+            }
+
+            @Test
+            @DisplayName("Should return consistent result across multiple calls")
+            void getNumberOfDevelopmentYears_calledMultipleTimes_returnsSameResult() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1990, 1993);
+
+                // Act
+                int firstCall = yearRange.getNumberOfDevelopmentYears();
+                int secondCall = yearRange.getNumberOfDevelopmentYears();
+                int thirdCall = yearRange.getNumberOfDevelopmentYears();
+
+                // Assert
+                assertThat(firstCall).isEqualTo(secondCall).isEqualTo(thirdCall).isEqualTo(4);
+            }
+
+            @Test
+            @DisplayName("Should handle typical insurance scenario (10 years)")
+            void getNumberOfDevelopmentYears_typicalInsuranceScenario_returnsCorrectCount() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(2010, 2019);
+
+                // Act
+                int numberOfYears = yearRange.getNumberOfDevelopmentYears();
+
+                // Assert
+                assertThat(numberOfYears).isEqualTo(10);
+            }
+
+            @Test
+            @DisplayName("Should handle example from problem statement (1990-1993)")
+            void getNumberOfDevelopmentYears_problemStatementExample_returnsFour() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1990, 1993);
+
+                // Act
+                int numberOfYears = yearRange.getNumberOfDevelopmentYears();
+
+                // Assert
+                assertThat(numberOfYears).isEqualTo(4); // Matches expected output format
+            }
+        }
+
+        @Nested
+        @DisplayName("toString() Tests")
+        class ToStringTests {
+
+            @Test
+            @DisplayName("Should return string containing min and max years")
+            void toString_withValidRange_containsYears() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1990, 1993);
+
+                // Act
+                String result = yearRange.toString();
+
+                // Assert
+                assertThat(result)
+                    .contains("1990")
+                    .contains("1993");
+            }
+
+            @Test
+            @DisplayName("Should return string containing number of development years")
+            void toString_withValidRange_containsNumberOfYears() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1990, 1993);
+
+                // Act
+                String result = yearRange.toString();
+
+                // Assert
+                assertThat(result).contains("4");
+            }
+
+            @Test
+            @DisplayName("Should follow expected format: YearRange{min-max (n years)}")
+            void toString_withValidRange_followsExpectedFormat() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1990, 1993);
+
+                // Act
+                String result = yearRange.toString();
+
+                // Assert
+                assertThat(result).matches("YearRange\\{\\d+-\\d+ \\(\\d+ years\\)\\}");
+            }
+
+            @Test
+            @DisplayName("Should produce expected string for single year range")
+            void toString_withSingleYearRange_showsOneYear() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(2000, 2000);
+
+                // Act
+                String result = yearRange.toString();
+
+                // Assert
+                assertThat(result).isEqualTo("YearRange{2000-2000 (1 years)}");
+            }
+
+            @Test
+            @DisplayName("Should handle negative years in string representation")
+            void toString_withNegativeYears_formatsCorrectly() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(-100, -50);
+
+                // Act
+                String result = yearRange.toString();
+
+                // Assert
+                assertThat(result)
+                    .contains("-100")
+                    .contains("-50")
+                    .contains("51");
+            }
+
+            @Test
+            @DisplayName("Should produce consistent output across multiple calls")
+            void toString_calledMultipleTimes_returnsSameString() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1990, 1993);
+
+                // Act
+                String firstCall = yearRange.toString();
+                String secondCall = yearRange.toString();
+
+                // Assert
+                assertThat(firstCall).isEqualTo(secondCall);
+            }
+
+            @Test
+            @DisplayName("Should not return null")
+            void toString_withAnyValidRange_doesNotReturnNull() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1990, 1993);
+
+                // Act
+                String result = yearRange.toString();
+
+                // Assert
+                assertThat(result).isNotNull();
+            }
+
+            @Test
+            @DisplayName("Should return non-empty string")
+            void toString_withAnyValidRange_returnsNonEmptyString() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1990, 1993);
+
+                // Act
+                String result = yearRange.toString();
+
+                // Assert
+                assertThat(result).isNotEmpty();
+            }
+
+            @Test
+            @DisplayName("Should be useful for logging and debugging")
+            void toString_withValidRange_providesDebugInfo() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1990, 1993);
+
+                // Act
+                String result = yearRange.toString();
+
+                // Assert - should contain all essential information
+                assertThat(result)
+                    .contains("YearRange")
+                    .contains("1990")
+                    .contains("1993")
+                    .contains("4")
+                    .contains("years");
+            }
+
+            @Test
+            @DisplayName("Should produce example output for documentation")
+            void toString_withExampleRange_producesExpectedOutput() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1990, 1993);
+
+                // Act
+                String result = yearRange.toString();
+
+                // Assert
+                assertThat(result).isEqualTo("YearRange{1990-1993 (4 years)}");
+            }
+        }
+
+        @Nested
+        @DisplayName("Edge Case Tests")
+        class EdgeCaseTests {
+
+            @Test
+            @DisplayName("Should reject Integer.MAX_VALUE range that would overflow")
+            void createYearRange_withMaxIntValue_throwsIllegalArgumentException() {
+                // Act & Assert - Range from 0 to MAX_VALUE would overflow
+                assertThatThrownBy(() -> new ClaimsReader.YearRange(0, Integer.MAX_VALUE))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Year range too large")
+                    .hasMessageContaining("would overflow");
+            }
+
+            @Test
+            @DisplayName("Should reject Integer.MIN_VALUE range that would overflow")
+            void createYearRange_withMinIntValue_throwsIllegalArgumentException() {
+                // Act & Assert - Range from MIN_VALUE to 0 spans > Integer.MAX_VALUE years
+                assertThatThrownBy(() -> new ClaimsReader.YearRange(Integer.MIN_VALUE, 0))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Year range too large")
+                    .hasMessageContaining("would overflow");
+            }
+
+            @Test
+            @DisplayName("Should reject full integer range that would overflow")
+            void createYearRange_withFullIntRange_throwsIllegalArgumentException() {
+                // Act & Assert - Full integer range would overflow calculation
+                assertThatThrownBy(() -> new ClaimsReader.YearRange(Integer.MIN_VALUE, Integer.MAX_VALUE))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Year range too large")
+                    .hasMessageContaining("would overflow");
+            }
+
+            @Test
+            @DisplayName("Should verify immutability of public final fields")
+            void yearRangeFields_arePublicFinal_ensureImmutability() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1990, 1993);
+                int originalMin = yearRange.minOriginYear;
+                int originalMax = yearRange.maxDevYear;
+
+                // Act - Read fields (cannot modify due to final)
+                int readMin = yearRange.minOriginYear;
+                int readMax = yearRange.maxDevYear;
+
+                // Assert - Values remain unchanged
+                assertThat(readMin).isEqualTo(originalMin);
+                assertThat(readMax).isEqualTo(originalMax);
+            }
+
+            @Test
+            @DisplayName("Should handle boundary condition: max = min + 1")
+            void createYearRange_withMinimalGap_calculatesCorrectly() {
+                // Arrange
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1000, 1001);
+
+                // Act
+                int numberOfYears = yearRange.getNumberOfDevelopmentYears();
+
+                // Assert
+                assertThat(numberOfYears).isEqualTo(2);
+            }
+
+            @Test
+            @DisplayName("Should handle large but valid ranges without overflow")
+            void getNumberOfDevelopmentYears_withLargeValidRange_calculatesCorrectly() {
+                // Arrange - Range that's large but won't overflow (1 million years)
+                ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(0, 1_000_000);
+
+                // Act
+                int numberOfYears = yearRange.getNumberOfDevelopmentYears();
+
+                // Assert
+                assertThat(numberOfYears).isEqualTo(1_000_001);
+            }
+        }
+    }
 }

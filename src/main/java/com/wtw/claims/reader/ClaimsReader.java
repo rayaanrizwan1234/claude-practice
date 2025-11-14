@@ -88,6 +88,65 @@ public class ClaimsReader {
     }
 
     /**
+     * Simple data class representing the year range found in a claims dataset.
+     * Used by the streaming approach to avoid loading all records into memory.
+     *
+     * <p>This is a minimal data holder - no equals/hashCode needed as it's only
+     * used to pass data between methods, not for comparisons or collections.</p>
+     */
+    public static class YearRange {
+        /** The minimum origin year found in the dataset */
+        public final int minOriginYear;
+
+        /** The maximum development year found in the dataset */
+        public final int maxDevYear;
+
+        /**
+         * Creates a new YearRange with the specified boundaries.
+         *
+         * @param minOriginYear the minimum origin year
+         * @param maxDevYear the maximum development year
+         * @throws IllegalArgumentException if maxDevYear is less than minOriginYear or if the range would cause integer overflow in calculations
+         */
+        public YearRange(int minOriginYear, int maxDevYear) {
+            if (maxDevYear < minOriginYear) {
+                throw new IllegalArgumentException(
+                    String.format("Max development year (%d) cannot be less than min origin year (%d)",
+                        maxDevYear, minOriginYear)
+                );
+            }
+
+            // Check for potential overflow in getNumberOfDevelopmentYears()
+            // Using long arithmetic to detect if the result would overflow an int
+            long yearSpan = (long) maxDevYear - (long) minOriginYear + 1;
+            if (yearSpan > Integer.MAX_VALUE) {
+                throw new IllegalArgumentException(
+                    String.format("Year range too large: would overflow integer calculation (range from %d to %d spans %d years)",
+                        minOriginYear, maxDevYear, yearSpan)
+                );
+            }
+
+            this.minOriginYear = minOriginYear;
+            this.maxDevYear = maxDevYear;
+        }
+
+        /**
+         * Calculates the number of development years in this range.
+         *
+         * @return the number of years (inclusive)
+         */
+        public int getNumberOfDevelopmentYears() {
+            return maxDevYear - minOriginYear + 1;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("YearRange{%d-%d (%d years)}",
+                minOriginYear, maxDevYear, getNumberOfDevelopmentYears());
+        }
+    }
+
+    /**
      * Reads and parses a CSV file into a list of ClaimRecord objects.
      *
      * @param filePath the path to the CSV file to read
