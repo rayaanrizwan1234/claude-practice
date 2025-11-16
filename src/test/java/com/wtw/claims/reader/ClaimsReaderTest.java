@@ -118,7 +118,7 @@ class ClaimsReaderTest {
             assertThat(records)
                 .isNotNull()
                 .hasSize(4)
-                .extracting(ClaimRecord::getProduct)
+                .extracting(ClaimRecord::product)
                 .containsExactly("Comp", "Comp", "Non-Comp", "Non-Comp");
         }
 
@@ -133,10 +133,10 @@ class ClaimsReaderTest {
 
             // Assert
             ClaimRecord firstRecord = records.get(0);
-            assertThat(firstRecord.getProduct()).isEqualTo("Comp");
-            assertThat(firstRecord.getOriginYear()).isEqualTo(1992);
-            assertThat(firstRecord.getDevelopmentYear()).isEqualTo(1992);
-            assertThat(firstRecord.getIncrementalValue()).isEqualTo(110.0);
+            assertThat(firstRecord.product()).isEqualTo("Comp");
+            assertThat(firstRecord.originYear()).isEqualTo(1992);
+            assertThat(firstRecord.developmentYear()).isEqualTo(1992);
+            assertThat(firstRecord.incrementalValue()).isEqualTo(110.0);
         }
 
         @Test
@@ -150,15 +150,15 @@ class ClaimsReaderTest {
 
             // Assert
             assertThat(records)
-                .extracting(ClaimRecord::getOriginYear)
+                .extracting(ClaimRecord::originYear)
                 .containsExactly(1992, 1992, 1990, 1990);
 
             assertThat(records)
-                .extracting(ClaimRecord::getDevelopmentYear)
+                .extracting(ClaimRecord::developmentYear)
                 .containsExactly(1992, 1993, 1990, 1991);
 
             assertThat(records)
-                .extracting(ClaimRecord::getIncrementalValue)
+                .extracting(ClaimRecord::incrementalValue)
                 .containsExactly(110.0, 170.0, 45.2, 64.8);
         }
 
@@ -173,7 +173,7 @@ class ClaimsReaderTest {
 
             // Assert - CSV parser already trims, but verify no leading/trailing spaces
             assertThat(records)
-                .extracting(ClaimRecord::getProduct)
+                .extracting(ClaimRecord::product)
                 .allMatch(product -> product.equals(product.trim()));
         }
     }
@@ -200,10 +200,10 @@ class ClaimsReaderTest {
 
             // Second record has empty incremental value
             ClaimRecord recordWithEmptyValue = records.get(1);
-            assertThat(recordWithEmptyValue.getProduct()).isEqualTo("Comp");
-            assertThat(recordWithEmptyValue.getOriginYear()).isEqualTo(1992);
-            assertThat(recordWithEmptyValue.getDevelopmentYear()).isEqualTo(1993);
-            assertThat(recordWithEmptyValue.getIncrementalValue()).isEqualTo(0.0);
+            assertThat(recordWithEmptyValue.product()).isEqualTo("Comp");
+            assertThat(recordWithEmptyValue.originYear()).isEqualTo(1992);
+            assertThat(recordWithEmptyValue.developmentYear()).isEqualTo(1993);
+            assertThat(recordWithEmptyValue.incrementalValue()).isEqualTo(0.0);
         }
 
         @Test
@@ -219,12 +219,12 @@ class ClaimsReaderTest {
             assertThat(records).hasSize(4);
 
             // Records with empty incremental values (indices 1 and 2)
-            assertThat(records.get(1).getIncrementalValue()).isEqualTo(0.0);
-            assertThat(records.get(2).getIncrementalValue()).isEqualTo(0.0);
+            assertThat(records.get(1).incrementalValue()).isEqualTo(0.0);
+            assertThat(records.get(2).incrementalValue()).isEqualTo(0.0);
 
             // Records with explicit values remain unchanged
-            assertThat(records.get(0).getIncrementalValue()).isEqualTo(110.0);
-            assertThat(records.get(3).getIncrementalValue()).isEqualTo(64.8);
+            assertThat(records.get(0).incrementalValue()).isEqualTo(110.0);
+            assertThat(records.get(3).incrementalValue()).isEqualTo(64.8);
         }
 
         @Test
@@ -241,7 +241,7 @@ class ClaimsReaderTest {
 
             // Assert
             assertThat(records).hasSize(1);
-            assertThat(records.get(0).getIncrementalValue()).isEqualTo(0.0);
+            assertThat(records.get(0).incrementalValue()).isEqualTo(0.0);
         }
     }
 
@@ -309,7 +309,7 @@ class ClaimsReaderTest {
 
             // Assert
             assertThat(records).hasSize(1);
-            assertThat(records.get(0).getProduct()).isEqualTo("Comp");
+            assertThat(records.get(0).product()).isEqualTo("Comp");
         }
     }
 
@@ -495,7 +495,7 @@ class ClaimsReaderTest {
 
             // Assert
             assertThat(records).hasSize(1);
-            assertThat(records.get(0).getProduct()).isEqualTo("Comp");
+            assertThat(records.get(0).product()).isEqualTo("Comp");
         }
     }
 
@@ -583,7 +583,7 @@ class ClaimsReaderTest {
 
             // Assert
             assertThat(records).hasSize(1);
-            assertThat(records.get(0).getIncrementalValue()).isEqualTo(-50.0);
+            assertThat(records.get(0).incrementalValue()).isEqualTo(-50.0);
         }
 
         @Test
@@ -600,7 +600,7 @@ class ClaimsReaderTest {
 
             // Assert
             assertThat(records).hasSize(1);
-            assertThat(records.get(0).getIncrementalValue()).isEqualTo(0.0);
+            assertThat(records.get(0).incrementalValue()).isEqualTo(0.0);
         }
 
         @Test
@@ -668,7 +668,7 @@ class ClaimsReaderTest {
 
             // Assert
             assertThat(records).hasSize(1);
-            assertThat(records.get(0).getProduct()).isEqualTo(longProductName);
+            assertThat(records.get(0).product()).isEqualTo(longProductName);
         }
 
         @Test
@@ -686,7 +686,7 @@ class ClaimsReaderTest {
             // Assert
             assertThat(records).hasSize(1);
             // Note: Double precision will limit actual stored precision
-            assertThat(records.get(0).getIncrementalValue()).isCloseTo(110.123456789, within(0.000001));
+            assertThat(records.get(0).incrementalValue()).isCloseTo(110.123456789, within(0.000001));
         }
     }
 
@@ -712,7 +712,7 @@ class ClaimsReaderTest {
 
             // Assert
             assertThat(records).hasSize(1);
-            assertThat(records.get(0).getProduct()).isEqualTo("Comprehensive Coverage");
+            assertThat(records.get(0).product()).isEqualTo("Comprehensive Coverage");
         }
 
         @Test
@@ -729,7 +729,7 @@ class ClaimsReaderTest {
 
             // Assert
             assertThat(records).hasSize(1);
-            assertThat(records.get(0).getProduct()).isEqualTo("Non-Comp");
+            assertThat(records.get(0).product()).isEqualTo("Non-Comp");
         }
 
         @Test
@@ -746,7 +746,7 @@ class ClaimsReaderTest {
 
             // Assert
             assertThat(records).hasSize(1);
-            assertThat(records.get(0).getIncrementalValue()).isEqualTo(110.0);
+            assertThat(records.get(0).incrementalValue()).isEqualTo(110.0);
         }
     }
 
@@ -776,8 +776,8 @@ class ClaimsReaderTest {
 
                 // Assert
                 assertThat(yearRange).isNotNull();
-                assertThat(yearRange.minOriginYear).isEqualTo(1992);
-                assertThat(yearRange.maxDevYear).isEqualTo(1993);
+                assertThat(yearRange.minOriginYear()).isEqualTo(1992);
+                assertThat(yearRange.maxDevYear()).isEqualTo(1993);
             }
 
             @Test
@@ -797,8 +797,8 @@ class ClaimsReaderTest {
                 ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
 
                 // Assert
-                assertThat(yearRange.minOriginYear).isEqualTo(1990);
-                assertThat(yearRange.maxDevYear).isEqualTo(1993);
+                assertThat(yearRange.minOriginYear()).isEqualTo(1990);
+                assertThat(yearRange.maxDevYear()).isEqualTo(1993);
             }
 
             @Test
@@ -816,8 +816,8 @@ class ClaimsReaderTest {
                 ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
 
                 // Assert
-                assertThat(yearRange.minOriginYear).isEqualTo(1990);
-                assertThat(yearRange.maxDevYear).isEqualTo(2005);
+                assertThat(yearRange.minOriginYear()).isEqualTo(1990);
+                assertThat(yearRange.maxDevYear()).isEqualTo(2005);
             }
 
             @Test
@@ -834,8 +834,8 @@ class ClaimsReaderTest {
                 ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
 
                 // Assert
-                assertThat(yearRange.minOriginYear).isEqualTo(2000);
-                assertThat(yearRange.maxDevYear).isEqualTo(2000);
+                assertThat(yearRange.minOriginYear()).isEqualTo(2000);
+                assertThat(yearRange.maxDevYear()).isEqualTo(2000);
             }
 
             @Test
@@ -853,8 +853,8 @@ class ClaimsReaderTest {
                 ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
 
                 // Assert
-                assertThat(yearRange.minOriginYear).isEqualTo(1985);
-                assertThat(yearRange.maxDevYear).isEqualTo(2005);
+                assertThat(yearRange.minOriginYear()).isEqualTo(1985);
+                assertThat(yearRange.maxDevYear()).isEqualTo(2005);
             }
 
             @Test
@@ -872,8 +872,8 @@ class ClaimsReaderTest {
                 ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
 
                 // Assert
-                assertThat(yearRange.minOriginYear).isEqualTo(1950);
-                assertThat(yearRange.maxDevYear).isEqualTo(2050);
+                assertThat(yearRange.minOriginYear()).isEqualTo(1950);
+                assertThat(yearRange.maxDevYear()).isEqualTo(2050);
             }
 
             @Test
@@ -886,8 +886,8 @@ class ClaimsReaderTest {
                 ClaimsReader.YearRange yearRange = reader.scanForYearRange(validCsvPath);
 
                 // Assert
-                assertThat(yearRange.minOriginYear).isEqualTo(1990);
-                assertThat(yearRange.maxDevYear).isEqualTo(1993);
+                assertThat(yearRange.minOriginYear()).isEqualTo(1990);
+                assertThat(yearRange.maxDevYear()).isEqualTo(1993);
             }
 
             @Test
@@ -905,8 +905,8 @@ class ClaimsReaderTest {
                 ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
 
                 // Assert - Should scan successfully despite invalid incremental values
-                assertThat(yearRange.minOriginYear).isEqualTo(1980);
-                assertThat(yearRange.maxDevYear).isEqualTo(2005);
+                assertThat(yearRange.minOriginYear()).isEqualTo(1980);
+                assertThat(yearRange.maxDevYear()).isEqualTo(2005);
             }
         }
 
@@ -976,8 +976,8 @@ class ClaimsReaderTest {
                 ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
 
                 // Assert - Should have scanned and found correct min/max
-                assertThat(yearRange.minOriginYear).isEqualTo(1900);
-                assertThat(yearRange.maxDevYear).isEqualTo(2004); // 1999 + 5
+                assertThat(yearRange.minOriginYear()).isEqualTo(1900);
+                assertThat(yearRange.maxDevYear()).isEqualTo(2004); // 1999 + 5
             }
         }
 
@@ -1144,8 +1144,8 @@ class ClaimsReaderTest {
 
                 // Assert
                 assertThat(yearRange).isNotNull();
-                assertThat(yearRange.minOriginYear).isEqualTo(1990);
-                assertThat(yearRange.maxDevYear).isEqualTo(1993);
+                assertThat(yearRange.minOriginYear()).isEqualTo(1990);
+                assertThat(yearRange.maxDevYear()).isEqualTo(1993);
                 assertThat(yearRange.getNumberOfDevelopmentYears()).isEqualTo(4);
             }
 
@@ -1184,8 +1184,8 @@ class ClaimsReaderTest {
 
                 // Assert - Should scan successfully since incremental values are not validated during scanning
                 assertThat(yearRange).isNotNull();
-                assertThat(yearRange.minOriginYear).isEqualTo(1990);
-                assertThat(yearRange.maxDevYear).isEqualTo(1993);
+                assertThat(yearRange.minOriginYear()).isEqualTo(1990);
+                assertThat(yearRange.maxDevYear()).isEqualTo(1993);
             }
 
             @Test
@@ -1221,8 +1221,8 @@ class ClaimsReaderTest {
                 ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
 
                 // Assert - Should have found absolute min origin year and max dev year
-                assertThat(yearRange.minOriginYear).isEqualTo(1990); // Minimum origin year
-                assertThat(yearRange.maxDevYear).isEqualTo(2015);    // Maximum development year
+                assertThat(yearRange.minOriginYear()).isEqualTo(1990); // Minimum origin year
+                assertThat(yearRange.maxDevYear()).isEqualTo(2015);    // Maximum development year
             }
 
             @Test
@@ -1241,7 +1241,7 @@ class ClaimsReaderTest {
                 ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
 
                 // Assert
-                assertThat(yearRange.minOriginYear).isEqualTo(1985);
+                assertThat(yearRange.minOriginYear()).isEqualTo(1985);
             }
 
             @Test
@@ -1260,7 +1260,7 @@ class ClaimsReaderTest {
                 ClaimsReader.YearRange yearRange = reader.scanForYearRange(csvPath);
 
                 // Assert
-                assertThat(yearRange.maxDevYear).isEqualTo(2010);
+                assertThat(yearRange.maxDevYear()).isEqualTo(2010);
             }
         }
     }
@@ -1294,10 +1294,10 @@ class ClaimsReaderTest {
 
                 // Assert
                 assertThat(consumedRecords).hasSize(1);
-                assertThat(consumedRecords.get(0).getProduct()).isEqualTo("Comp");
-                assertThat(consumedRecords.get(0).getOriginYear()).isEqualTo(1992);
-                assertThat(consumedRecords.get(0).getDevelopmentYear()).isEqualTo(1993);
-                assertThat(consumedRecords.get(0).getIncrementalValue()).isEqualTo(110.0);
+                assertThat(consumedRecords.get(0).product()).isEqualTo("Comp");
+                assertThat(consumedRecords.get(0).originYear()).isEqualTo(1992);
+                assertThat(consumedRecords.get(0).developmentYear()).isEqualTo(1993);
+                assertThat(consumedRecords.get(0).incrementalValue()).isEqualTo(110.0);
             }
 
             @Test
@@ -1320,10 +1320,10 @@ class ClaimsReaderTest {
                 // Assert
                 assertThat(consumedRecords).hasSize(4);
                 assertThat(consumedRecords)
-                    .extracting(ClaimRecord::getProduct)
+                    .extracting(ClaimRecord::product)
                     .containsExactly("Comp", "Comp", "Non-Comp", "Non-Comp");
                 assertThat(consumedRecords)
-                    .extracting(ClaimRecord::getIncrementalValue)
+                    .extracting(ClaimRecord::incrementalValue)
                     .containsExactly(110.0, 170.0, 45.2, 64.8);
             }
 
@@ -1345,9 +1345,9 @@ class ClaimsReaderTest {
 
                 // Assert
                 assertThat(consumedRecords).hasSize(3);
-                assertThat(consumedRecords.get(0).getIncrementalValue()).isEqualTo(110.0);
-                assertThat(consumedRecords.get(1).getIncrementalValue()).isEqualTo(0.0);
-                assertThat(consumedRecords.get(2).getIncrementalValue()).isEqualTo(0.0);
+                assertThat(consumedRecords.get(0).incrementalValue()).isEqualTo(110.0);
+                assertThat(consumedRecords.get(1).incrementalValue()).isEqualTo(0.0);
+                assertThat(consumedRecords.get(2).incrementalValue()).isEqualTo(0.0);
             }
 
             @Test
@@ -1369,7 +1369,7 @@ class ClaimsReaderTest {
                 // Assert
                 assertThat(consumedRecords).hasSize(3);
                 assertThat(consumedRecords)
-                    .extracting(ClaimRecord::getProduct)
+                    .extracting(ClaimRecord::product)
                     .containsExactly("ProductA", "ProductB", "ProductC");
             }
 
@@ -1386,7 +1386,7 @@ class ClaimsReaderTest {
                 // Assert
                 assertThat(consumedRecords).hasSize(4);
                 assertThat(consumedRecords)
-                    .extracting(ClaimRecord::getProduct)
+                    .extracting(ClaimRecord::product)
                     .containsExactly("Comp", "Comp", "Non-Comp", "Non-Comp");
             }
 
@@ -1470,8 +1470,8 @@ class ClaimsReaderTest {
 
                 // Assert
                 assertThat(accumulated).hasSize(2);
-                assertThat(accumulated.get(0).getProduct()).isEqualTo("Comp");
-                assertThat(accumulated.get(1).getProduct()).isEqualTo("Non-Comp");
+                assertThat(accumulated.get(0).product()).isEqualTo("Comp");
+                assertThat(accumulated.get(1).product()).isEqualTo("Non-Comp");
             }
 
             @Test
@@ -1488,7 +1488,7 @@ class ClaimsReaderTest {
 
                 List<ClaimRecord> compRecords = new ArrayList<>();
                 Consumer<ClaimRecord> compFilter = record -> {
-                    if ("Comp".equals(record.getProduct())) {
+                    if ("Comp".equals(record.product())) {
                         compRecords.add(record);
                     }
                 };
@@ -1498,7 +1498,7 @@ class ClaimsReaderTest {
 
                 // Assert
                 assertThat(compRecords).hasSize(2);
-                assertThat(compRecords).allMatch(record -> "Comp".equals(record.getProduct()));
+                assertThat(compRecords).allMatch(record -> "Comp".equals(record.product()));
             }
 
             @Test
@@ -1513,7 +1513,7 @@ class ClaimsReaderTest {
                 Files.writeString(csvPath, csvContent);
 
                 double[] totalValue = {0.0};
-                Consumer<ClaimRecord> sumCalculator = record -> totalValue[0] += record.getIncrementalValue();
+                Consumer<ClaimRecord> sumCalculator = record -> totalValue[0] += record.incrementalValue();
 
                 // Act
                 reader.streamClaims(csvPath, sumCalculator);
@@ -1539,10 +1539,10 @@ class ClaimsReaderTest {
 
                 // Assert
                 assertThat(capturedRecord[0]).isNotNull();
-                assertThat(capturedRecord[0].getProduct()).isEqualTo("TestProduct");
-                assertThat(capturedRecord[0].getOriginYear()).isEqualTo(1995);
-                assertThat(capturedRecord[0].getDevelopmentYear()).isEqualTo(1997);
-                assertThat(capturedRecord[0].getIncrementalValue()).isEqualTo(250.75);
+                assertThat(capturedRecord[0].product()).isEqualTo("TestProduct");
+                assertThat(capturedRecord[0].originYear()).isEqualTo(1995);
+                assertThat(capturedRecord[0].developmentYear()).isEqualTo(1997);
+                assertThat(capturedRecord[0].incrementalValue()).isEqualTo(250.75);
             }
         }
 
@@ -1648,7 +1648,7 @@ class ClaimsReaderTest {
 
                 // Assert
                 assertThat(consumedRecords).hasSize(1);
-                assertThat(consumedRecords.get(0).getIncrementalValue()).isEqualTo(0.0);
+                assertThat(consumedRecords.get(0).incrementalValue()).isEqualTo(0.0);
             }
         }
 
@@ -1835,10 +1835,10 @@ class ClaimsReaderTest {
                 // Assert
                 assertThat(records).hasSize(4);
                 assertThat(records)
-                    .extracting(ClaimRecord::getProduct)
+                    .extracting(ClaimRecord::product)
                     .containsExactly("Comp", "Comp", "Non-Comp", "Non-Comp");
                 assertThat(records)
-                    .extracting(ClaimRecord::getIncrementalValue)
+                    .extracting(ClaimRecord::incrementalValue)
                     .containsExactly(110.0, 170.0, 45.2, 64.8);
             }
 
@@ -1855,8 +1855,8 @@ class ClaimsReaderTest {
                 // Assert
                 assertThat(records).hasSize(4);
                 // Records with empty incremental values should have 0.0
-                assertThat(records.get(1).getIncrementalValue()).isEqualTo(0.0);
-                assertThat(records.get(2).getIncrementalValue()).isEqualTo(0.0);
+                assertThat(records.get(1).incrementalValue()).isEqualTo(0.0);
+                assertThat(records.get(2).incrementalValue()).isEqualTo(0.0);
             }
 
             @Test
@@ -1915,7 +1915,7 @@ class ClaimsReaderTest {
                 double[] runningSum = {0.0};
                 Consumer<ClaimRecord> memoryEfficientProcessor = record -> {
                     recordCount[0]++;
-                    runningSum[0] += record.getIncrementalValue();
+                    runningSum[0] += record.incrementalValue();
                     // Record is eligible for GC after this line
                 };
 
@@ -1940,7 +1940,7 @@ class ClaimsReaderTest {
                 // Track the order of processing
                 List<String> processingOrder = new ArrayList<>();
                 Consumer<ClaimRecord> orderTracker = record ->
-                    processingOrder.add(record.getProduct() + "-" + record.getOriginYear() + "-" + record.getDevelopmentYear());
+                    processingOrder.add(record.product() + "-" + record.originYear() + "-" + record.developmentYear());
 
                 // Act
                 reader.streamClaims(csvPath, orderTracker);
@@ -1975,8 +1975,8 @@ class ClaimsReaderTest {
 
                 // Assert
                 assertThat(yearRange).isNotNull();
-                assertThat(yearRange.minOriginYear).isEqualTo(1990);
-                assertThat(yearRange.maxDevYear).isEqualTo(1993);
+                assertThat(yearRange.minOriginYear()).isEqualTo(1990);
+                assertThat(yearRange.maxDevYear()).isEqualTo(1993);
             }
 
             @Test
@@ -1987,8 +1987,8 @@ class ClaimsReaderTest {
 
                 // Assert
                 assertThat(yearRange).isNotNull();
-                assertThat(yearRange.minOriginYear).isEqualTo(2000);
-                assertThat(yearRange.maxDevYear).isEqualTo(2000);
+                assertThat(yearRange.minOriginYear()).isEqualTo(2000);
+                assertThat(yearRange.maxDevYear()).isEqualTo(2000);
             }
 
             @Test
@@ -1999,8 +1999,8 @@ class ClaimsReaderTest {
 
                 // Assert
                 assertThat(yearRange).isNotNull();
-                assertThat(yearRange.minOriginYear).isEqualTo(1950);
-                assertThat(yearRange.maxDevYear).isEqualTo(2050);
+                assertThat(yearRange.minOriginYear()).isEqualTo(1950);
+                assertThat(yearRange.maxDevYear()).isEqualTo(2050);
             }
 
             @Test
@@ -2033,8 +2033,8 @@ class ClaimsReaderTest {
 
                 // Assert
                 assertThat(yearRange).isNotNull();
-                assertThat(yearRange.minOriginYear).isEqualTo(-100);
-                assertThat(yearRange.maxDevYear).isEqualTo(-50);
+                assertThat(yearRange.minOriginYear()).isEqualTo(-100);
+                assertThat(yearRange.maxDevYear()).isEqualTo(-50);
             }
 
             @Test
@@ -2045,8 +2045,8 @@ class ClaimsReaderTest {
 
                 // Assert
                 assertThat(yearRange).isNotNull();
-                assertThat(yearRange.minOriginYear).isEqualTo(0);
-                assertThat(yearRange.maxDevYear).isEqualTo(10);
+                assertThat(yearRange.minOriginYear()).isEqualTo(0);
+                assertThat(yearRange.maxDevYear()).isEqualTo(10);
             }
 
             @Test
@@ -2057,8 +2057,8 @@ class ClaimsReaderTest {
 
                 // Assert
                 assertThat(yearRange).isNotNull();
-                assertThat(yearRange.minOriginYear).isEqualTo(-10);
-                assertThat(yearRange.maxDevYear).isEqualTo(0);
+                assertThat(yearRange.minOriginYear()).isEqualTo(-10);
+                assertThat(yearRange.maxDevYear()).isEqualTo(0);
             }
 
             @Test
@@ -2069,8 +2069,8 @@ class ClaimsReaderTest {
 
                 // Assert
                 assertThat(yearRange).isNotNull();
-                assertThat(yearRange.minOriginYear).isEqualTo(0);
-                assertThat(yearRange.maxDevYear).isEqualTo(0);
+                assertThat(yearRange.minOriginYear()).isEqualTo(0);
+                assertThat(yearRange.maxDevYear()).isEqualTo(0);
             }
 
             @Test
@@ -2081,8 +2081,8 @@ class ClaimsReaderTest {
 
                 // Assert
                 assertThat(yearRange).isNotNull();
-                assertThat(yearRange.minOriginYear).isEqualTo(1990);
-                assertThat(yearRange.maxDevYear).isEqualTo(2025);
+                assertThat(yearRange.minOriginYear()).isEqualTo(1990);
+                assertThat(yearRange.maxDevYear()).isEqualTo(2025);
             }
 
             @Test
@@ -2415,18 +2415,18 @@ class ClaimsReaderTest {
             }
 
             @Test
-            @DisplayName("Should verify immutability of public final fields")
-            void yearRangeFields_arePublicFinal_ensureImmutability() {
+            @DisplayName("Should verify immutability via accessor methods")
+            void yearRangeFields_areImmutable_ensureConsistency() {
                 // Arrange
                 ClaimsReader.YearRange yearRange = new ClaimsReader.YearRange(1990, 1993);
-                int originalMin = yearRange.minOriginYear;
-                int originalMax = yearRange.maxDevYear;
+                int originalMin = yearRange.minOriginYear();
+                int originalMax = yearRange.maxDevYear();
 
-                // Act - Read fields (cannot modify due to final)
-                int readMin = yearRange.minOriginYear;
-                int readMax = yearRange.maxDevYear;
+                // Act - Read fields via accessor methods
+                int readMin = yearRange.minOriginYear();
+                int readMax = yearRange.maxDevYear();
 
-                // Assert - Values remain unchanged
+                // Assert - Values remain unchanged (records are immutable by design)
                 assertThat(readMin).isEqualTo(originalMin);
                 assertThat(readMax).isEqualTo(originalMax);
             }

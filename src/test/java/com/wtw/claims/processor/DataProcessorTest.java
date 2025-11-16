@@ -865,7 +865,7 @@ class DataProcessorTest {
             List<ClaimRecord> compRecords = grouped.get("Comp");
             assertThat(compRecords).hasSize(3);
             assertThat(compRecords)
-                    .extracting(ClaimRecord::getOriginYear)
+                    .extracting(ClaimRecord::originYear)
                     .containsExactly(1992, 1992, 1993);
 
             // Non-Comp product has 9 records (origin years: 1990-1993)

@@ -157,8 +157,8 @@ public class ClaimsApplication {
         // STEP 1: Scan the file once to determine the global year range
         logger.info("Step 1/4: Scanning year range...");
         ClaimsReader.YearRange yearRange = reader.scanForYearRange(inputPath);
-        int earliestOriginYear = yearRange.minOriginYear;
-        int latestDevelopmentYear = yearRange.maxDevYear;
+        int earliestOriginYear = yearRange.minOriginYear();
+        int latestDevelopmentYear = yearRange.maxDevYear();
         int numberOfDevelopmentYears = yearRange.getNumberOfDevelopmentYears();
         logger.info("  Year range: {} to {} ({} development years)",
             earliestOriginYear, latestDevelopmentYear, numberOfDevelopmentYears);
@@ -173,7 +173,7 @@ public class ClaimsApplication {
 
             // Get or create the triangle for this product
             ClaimsTriangle triangle = triangles.computeIfAbsent(
-                record.getProduct(),
+                record.product(),
                 product -> {
                     logger.debug("Creating triangle for product: {}", product);
                     return new ClaimsTriangle(product, earliestOriginYear, latestDevelopmentYear);
@@ -182,9 +182,9 @@ public class ClaimsApplication {
 
             // Add this record's incremental value to the triangle
             triangle.addIncrementalValue(
-                record.getOriginYear(),
-                record.getDevelopmentYear(),
-                record.getIncrementalValue()
+                record.originYear(),
+                record.developmentYear(),
+                record.incrementalValue()
             );
 
             // Log progress for large files (every 10,000 records)

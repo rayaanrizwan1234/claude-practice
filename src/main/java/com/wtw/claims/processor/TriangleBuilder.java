@@ -98,9 +98,9 @@ public final class TriangleBuilder {
         // Populate the triangle with incremental values from records
         for (ClaimRecord record : records) {
             triangle.addIncrementalValue(
-                record.getOriginYear(),
-                record.getDevelopmentYear(),
-                record.getIncrementalValue()
+                record.originYear(),
+                record.developmentYear(),
+                record.incrementalValue()
             );
         }
 

@@ -52,10 +52,10 @@ class ClaimRecordTest {
 
             // Assert
             assertThat(record).isNotNull();
-            assertThat(record.getProduct()).isEqualTo(VALID_PRODUCT);
-            assertThat(record.getOriginYear()).isEqualTo(VALID_ORIGIN_YEAR);
-            assertThat(record.getDevelopmentYear()).isEqualTo(VALID_DEVELOPMENT_YEAR);
-            assertThat(record.getIncrementalValue()).isEqualTo(VALID_INCREMENTAL_VALUE);
+            assertThat(record.product()).isEqualTo(VALID_PRODUCT);
+            assertThat(record.originYear()).isEqualTo(VALID_ORIGIN_YEAR);
+            assertThat(record.developmentYear()).isEqualTo(VALID_DEVELOPMENT_YEAR);
+            assertThat(record.incrementalValue()).isEqualTo(VALID_INCREMENTAL_VALUE);
         }
 
         @Test
@@ -115,7 +115,7 @@ class ClaimRecordTest {
             );
 
             // Assert
-            assertThat(record.getProduct()).isEqualTo("Comp");
+            assertThat(record.product()).isEqualTo("Comp");
         }
 
         @Test
@@ -130,7 +130,7 @@ class ClaimRecordTest {
             );
 
             // Assert
-            assertThat(record.getIncrementalValue()).isEqualTo(0.0);
+            assertThat(record.incrementalValue()).isEqualTo(0.0);
         }
 
         @Test
@@ -145,7 +145,7 @@ class ClaimRecordTest {
             );
 
             // Assert
-            assertThat(record.getIncrementalValue()).isEqualTo(-50.0);
+            assertThat(record.incrementalValue()).isEqualTo(-50.0);
         }
     }
 
@@ -163,7 +163,7 @@ class ClaimRecordTest {
             ClaimRecord record = createValidClaimRecord();
 
             // Act
-            String product = record.getProduct();
+            String product = record.product();
 
             // Assert
             assertThat(product).isEqualTo(VALID_PRODUCT);
@@ -176,7 +176,7 @@ class ClaimRecordTest {
             ClaimRecord record = createValidClaimRecord();
 
             // Act
-            int originYear = record.getOriginYear();
+            int originYear = record.originYear();
 
             // Assert
             assertThat(originYear).isEqualTo(VALID_ORIGIN_YEAR);
@@ -189,7 +189,7 @@ class ClaimRecordTest {
             ClaimRecord record = createValidClaimRecord();
 
             // Act
-            int developmentYear = record.getDevelopmentYear();
+            int developmentYear = record.developmentYear();
 
             // Assert
             assertThat(developmentYear).isEqualTo(VALID_DEVELOPMENT_YEAR);
@@ -202,7 +202,7 @@ class ClaimRecordTest {
             ClaimRecord record = createValidClaimRecord();
 
             // Act
-            double incrementalValue = record.getIncrementalValue();
+            double incrementalValue = record.incrementalValue();
 
             // Assert
             assertThat(incrementalValue).isEqualTo(VALID_INCREMENTAL_VALUE);
@@ -220,7 +220,7 @@ class ClaimRecordTest {
             );
 
             // Act
-            String product = record.getProduct();
+            String product = record.product();
 
             // Assert
             assertThat(product)

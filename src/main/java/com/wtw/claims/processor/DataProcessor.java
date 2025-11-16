@@ -64,7 +64,7 @@ public final class DataProcessor {
         }
 
         return records.stream()
-                .collect(Collectors.groupingBy(ClaimRecord::getProduct));
+                .collect(Collectors.groupingBy(ClaimRecord::product));
     }
 
     /**
@@ -95,7 +95,7 @@ public final class DataProcessor {
         }
 
         return records.stream()
-                .mapToInt(ClaimRecord::getOriginYear)
+                .mapToInt(ClaimRecord::originYear)
                 .min()
                 .orElseThrow(() -> new IllegalStateException("Unable to find minimum origin year"));
     }
@@ -128,7 +128,7 @@ public final class DataProcessor {
         }
 
         return records.stream()
-                .mapToInt(ClaimRecord::getDevelopmentYear)
+                .mapToInt(ClaimRecord::developmentYear)
                 .max()
                 .orElseThrow(() -> new IllegalStateException("Unable to find maximum development year"));
     }

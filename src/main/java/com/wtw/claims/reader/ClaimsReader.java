@@ -89,27 +89,19 @@ public class ClaimsReader {
     }
 
     /**
-     * Simple data class representing the year range found in a claims dataset.
+     * Immutable record representing the year range found in a claims dataset.
      * Used by the streaming approach to avoid loading all records into memory.
      *
-     * <p>This is a minimal data holder - no equals/hashCode needed as it's only
-     * used to pass data between methods, not for comparisons or collections.</p>
+     * @param minOriginYear the minimum origin year found in the dataset
+     * @param maxDevYear the maximum development year found in the dataset
      */
-    public static class YearRange {
-        /** The minimum origin year found in the dataset */
-        public final int minOriginYear;
-
-        /** The maximum development year found in the dataset */
-        public final int maxDevYear;
-
+    public record YearRange(int minOriginYear, int maxDevYear) {
         /**
-         * Creates a new YearRange with the specified boundaries.
+         * Compact constructor that validates year range boundaries.
          *
-         * @param minOriginYear the minimum origin year
-         * @param maxDevYear the maximum development year
          * @throws IllegalArgumentException if maxDevYear is less than minOriginYear or if the range would cause integer overflow in calculations
          */
-        public YearRange(int minOriginYear, int maxDevYear) {
+        public YearRange {
             if (maxDevYear < minOriginYear) {
                 throw new IllegalArgumentException(
                     String.format("Max development year (%d) cannot be less than min origin year (%d)",
@@ -126,9 +118,6 @@ public class ClaimsReader {
                         minOriginYear, maxDevYear, yearSpan)
                 );
             }
-
-            this.minOriginYear = minOriginYear;
-            this.maxDevYear = maxDevYear;
         }
 
         /**

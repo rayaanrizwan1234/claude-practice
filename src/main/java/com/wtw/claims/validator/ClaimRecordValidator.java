@@ -46,9 +46,9 @@ public class ClaimRecordValidator {
             throw new NullPointerException("ClaimRecord cannot be null");
         }
 
-        int originYear = record.getOriginYear();
-        int developmentYear = record.getDevelopmentYear();
-        double incrementalValue = record.getIncrementalValue();
+        int originYear = record.originYear();
+        int developmentYear = record.developmentYear();
+        double incrementalValue = record.incrementalValue();
 
         // Validate origin year
         if (!isValidYear(originYear)) {
