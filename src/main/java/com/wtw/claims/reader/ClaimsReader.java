@@ -9,7 +9,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -368,6 +372,226 @@ public class ClaimsReader {
         }
 
         return records;
+    }
+
+    // ========================================================================
+    // InputStream-based methods for Web API support
+    // ========================================================================
+
+    /**
+     * Performs a lightweight scan of CSV data from an InputStream to determine the year range.
+     *
+     * <p>This is an overloaded version of {@link #scanForYearRange(Path)} that accepts
+     * an InputStream instead of a file path. This is useful for processing uploaded files
+     * in web applications where the data is available as a stream.</p>
+     *
+     * <p><strong>Important:</strong> The caller is responsible for closing the InputStream
+     * after this method returns. This method will consume the entire stream.</p>
+     *
+     * @param inputStream the InputStream containing CSV data
+     * @return YearRange containing the minimum origin year and maximum development year
+     * @throws IOException if an I/O error occurs reading the stream
+     * @throws IllegalArgumentException if the CSV format is invalid, data is malformed, or no valid records are found
+     * @throws NullPointerException if inputStream is null
+     */
+    public YearRange scanForYearRange(InputStream inputStream) throws IOException {
+        if (inputStream == null) {
+            throw new NullPointerException("InputStream cannot be null");
+        }
+
+        logger.info("Scanning for year range from InputStream");
+
+        Integer minOriginYear = null;
+        Integer maxDevYear = null;
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+             CSVParser csvParser = CSVFormat.DEFAULT
+                 .builder()
+                 .setHeader()
+                 .setSkipHeaderRecord(true)
+                 .setTrim(true)
+                 .setIgnoreEmptyLines(true)
+                 .build()
+                 .parse(reader)) {
+
+            // Validate header
+            validateHeader(csvParser.getHeaderNames());
+
+            // Scan records to find min/max years
+            int lineNumber = 1;
+            for (CSVRecord csvRecord : csvParser) {
+                lineNumber++;
+                try {
+                    if (csvRecord.size() < 3) {
+                        throw new IllegalArgumentException(
+                            String.format("Expected at least 3 columns but found %d", csvRecord.size())
+                        );
+                    }
+
+                    int originYear = parseInt(csvRecord.get(1), "Origin Year");
+                    int developmentYear = parseInt(csvRecord.get(2), "Development Year");
+
+                    if (developmentYear < originYear) {
+                        throw new IllegalArgumentException(
+                            String.format("Development year (%d) cannot be before origin year (%d)",
+                                developmentYear, originYear)
+                        );
+                    }
+
+                    if (minOriginYear == null || originYear < minOriginYear) {
+                        minOriginYear = originYear;
+                    }
+                    if (maxDevYear == null || developmentYear > maxDevYear) {
+                        maxDevYear = developmentYear;
+                    }
+                } catch (IllegalArgumentException e) {
+                    String errorMsg = String.format("Error scanning line %d: %s", lineNumber, e.getMessage());
+                    logger.error(errorMsg, e);
+                    throw new IllegalArgumentException(errorMsg, e);
+                }
+            }
+
+            if (minOriginYear == null || maxDevYear == null) {
+                throw new IllegalArgumentException("No claim records found in input stream");
+            }
+
+            YearRange yearRange = new YearRange(minOriginYear, maxDevYear);
+            logger.info("Scanned year range from InputStream: {}", yearRange);
+            return yearRange;
+        }
+    }
+
+    /**
+     * Streams claims data from an InputStream, processing records one at a time using a consumer.
+     *
+     * <p>This is an overloaded version of {@link #streamClaims(Path, Consumer)} that accepts
+     * an InputStream instead of a file path. This is useful for processing uploaded files
+     * in web applications.</p>
+     *
+     * <p><strong>Important:</strong> The caller is responsible for closing the InputStream
+     * after this method returns. This method will consume the entire stream.</p>
+     *
+     * @param inputStream the InputStream containing CSV data
+     * @param recordConsumer consumer function that processes each ClaimRecord as it's read
+     * @throws IOException if an I/O error occurs reading the stream
+     * @throws IllegalArgumentException if the CSV format is invalid or data is malformed
+     * @throws NullPointerException if inputStream or recordConsumer is null
+     */
+    public void streamClaims(InputStream inputStream, Consumer<ClaimRecord> recordConsumer) throws IOException {
+        if (inputStream == null) {
+            throw new NullPointerException("InputStream cannot be null");
+        }
+        if (recordConsumer == null) {
+            throw new NullPointerException("Record consumer cannot be null");
+        }
+
+        logger.info("Streaming claims from InputStream");
+
+        int recordCount = 0;
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+             CSVParser csvParser = CSVFormat.DEFAULT
+                 .builder()
+                 .setHeader()
+                 .setSkipHeaderRecord(true)
+                 .setTrim(true)
+                 .setIgnoreEmptyLines(true)
+                 .build()
+                 .parse(reader)) {
+
+            validateHeader(csvParser.getHeaderNames());
+
+            int lineNumber = 1;
+            for (CSVRecord csvRecord : csvParser) {
+                lineNumber++;
+                try {
+                    ClaimRecord claimRecord = parseRecord(csvRecord, lineNumber);
+                    recordConsumer.accept(claimRecord);
+                    recordCount++;
+                } catch (IllegalArgumentException e) {
+                    String errorMsg = String.format("Error streaming line %d: %s", lineNumber, e.getMessage());
+                    logger.error(errorMsg, e);
+                    throw new IllegalArgumentException(errorMsg, e);
+                }
+            }
+
+            logger.info("Successfully streamed {} claim records from InputStream", recordCount);
+        }
+    }
+
+    /**
+     * Reads and parses CSV data from an InputStream into a list of ClaimRecord objects.
+     *
+     * <p>This is an overloaded version of {@link #readClaims(Path)} that accepts
+     * an InputStream instead of a file path. This is useful for processing uploaded files
+     * in web applications.</p>
+     *
+     * <p><strong>Important:</strong> The caller is responsible for closing the InputStream
+     * after this method returns. This method will consume the entire stream.</p>
+     *
+     * @param inputStream the InputStream containing CSV data
+     * @return list of parsed and validated ClaimRecord objects
+     * @throws IOException if an I/O error occurs reading the stream
+     * @throws IllegalArgumentException if the CSV format is invalid or data is malformed
+     * @throws NullPointerException if inputStream is null
+     */
+    public List<ClaimRecord> readClaims(InputStream inputStream) throws IOException {
+        if (inputStream == null) {
+            throw new NullPointerException("InputStream cannot be null");
+        }
+
+        logger.info("Reading claims from InputStream");
+
+        List<ClaimRecord> records = new ArrayList<>();
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+             CSVParser csvParser = CSVFormat.DEFAULT
+                 .builder()
+                 .setHeader()
+                 .setSkipHeaderRecord(true)
+                 .setTrim(true)
+                 .setIgnoreEmptyLines(true)
+                 .build()
+                 .parse(reader)) {
+
+            validateHeader(csvParser.getHeaderNames());
+
+            int lineNumber = 1;
+            for (CSVRecord csvRecord : csvParser) {
+                lineNumber++;
+                try {
+                    ClaimRecord claimRecord = parseRecord(csvRecord, lineNumber);
+                    records.add(claimRecord);
+                } catch (IllegalArgumentException e) {
+                    String errorMsg = String.format("Error parsing line %d: %s", lineNumber, e.getMessage());
+                    logger.error(errorMsg, e);
+                    throw new IllegalArgumentException(errorMsg, e);
+                }
+            }
+
+            logger.info("Successfully read {} claim records from InputStream", records.size());
+        }
+
+        return records;
+    }
+
+    /**
+     * Convenience method to read claims from a CSV string.
+     *
+     * <p>This method is primarily useful for testing and for processing
+     * small amounts of in-memory CSV data.</p>
+     *
+     * @param csvContent the CSV content as a string
+     * @return list of parsed and validated ClaimRecord objects
+     * @throws IOException if an I/O error occurs
+     * @throws IllegalArgumentException if the CSV format is invalid or data is malformed
+     * @throws NullPointerException if csvContent is null
+     */
+    public List<ClaimRecord> readClaims(String csvContent) throws IOException {
+        if (csvContent == null) {
+            throw new NullPointerException("CSV content cannot be null");
+        }
+        return readClaims(new ByteArrayInputStream(csvContent.getBytes(StandardCharsets.UTF_8)));
     }
 
     /**

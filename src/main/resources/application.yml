@@ -1,0 +1,53 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: claims-triangle-accumulator-api
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+      file-size-threshold: 2KB
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: Claims Triangle Accumulator API
+    description: REST API for processing insurance claims triangles
+    version: 2.0.0
+    java-version: ${java.version}
+
+# Custom application properties
+claims:
+  processing:
+    async:
+      enabled: true
+      max-concurrent-jobs: 10
+      job-timeout-minutes: 30
+      cleanup-interval-minutes: 60
+    sync:
+      max-file-size-mb: 10
+
+logging:
+  level:
+    com.wtw.claims: INFO
+    org.springframework.web: INFO

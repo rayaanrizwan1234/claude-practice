@@ -133,6 +133,86 @@ public class ClaimsWriter {
         }
     }
 
+    // ========================================================================
+    // String-based methods for Web API support
+    // ========================================================================
+
+    /**
+     * Formats cumulative claims data as a CSV string.
+     *
+     * <p>This method produces the same output format as {@link #writeCumulativeClaims(Path, Map, int, int)}
+     * but returns it as a string instead of writing to a file. This is useful for API responses
+     * where the formatted output needs to be included in a JSON response.</p>
+     *
+     * @param triangles a map of product names to their corresponding ClaimsTriangle objects
+     * @param earliestOriginYear the earliest origin year across all products
+     * @param numberOfDevelopmentYears the number of development years in the dataset
+     * @return the formatted CSV output as a string
+     * @throws NullPointerException if triangles is null
+     * @throws IllegalArgumentException if triangles map is empty, contains null values, or numberOfDevelopmentYears is not positive
+     */
+    public String formatCumulativeClaims(
+            Map<String, ClaimsTriangle> triangles,
+            int earliestOriginYear,
+            int numberOfDevelopmentYears
+    ) {
+        Objects.requireNonNull(triangles, "Triangles map cannot be null");
+
+        if (triangles.isEmpty()) {
+            throw new IllegalArgumentException("Triangles map cannot be empty");
+        }
+
+        if (numberOfDevelopmentYears <= 0) {
+            throw new IllegalArgumentException(
+                "Number of development years must be positive, but was: " + numberOfDevelopmentYears
+            );
+        }
+
+        // Validate that no triangle values are null
+        for (Map.Entry<String, ClaimsTriangle> entry : triangles.entrySet()) {
+            if (entry.getValue() == null) {
+                throw new IllegalArgumentException(
+                    "Triangle for product '" + entry.getKey() + "' cannot be null"
+                );
+            }
+        }
+
+        logger.debug("Formatting cumulative claims to string");
+
+        StringBuilder output = new StringBuilder();
+
+        // Format header line: earliest_origin_year,number_of_development_years
+        output.append(formatHeader(earliestOriginYear, numberOfDevelopmentYears));
+
+        // Sort products alphabetically and format each product line
+        List<String> sortedProducts = triangles.keySet()
+            .stream().sorted().collect(Collectors.toList());
+
+        for (String productName : sortedProducts) {
+            ClaimsTriangle triangle = triangles.get(productName);
+            output.append(formatProductLine(productName, triangle));
+            output.append(System.lineSeparator());
+        }
+
+        logger.debug("Successfully formatted cumulative claims for {} products", triangles.size());
+
+        return output.toString();
+    }
+
+    /**
+     * Formats the header line for the cumulative claims output.
+     *
+     * <p>The format is: {@code earliestOriginYear,numberOfDevelopmentYears}
+     * followed by a line separator.</p>
+     *
+     * @param earliestOriginYear the earliest origin year
+     * @param numberOfDevelopmentYears the number of development years
+     * @return the formatted header line including line separator
+     */
+    public String formatHeader(int earliestOriginYear, int numberOfDevelopmentYears) {
+        return String.format("%d,%d%s", earliestOriginYear, numberOfDevelopmentYears, System.lineSeparator());
+    }
+
     /**
      * Formats a product line for the output CSV.
      *
@@ -141,9 +221,9 @@ public class ClaimsWriter {
      *
      * @param productName the name of the product
      * @param triangle the ClaimsTriangle containing cumulative values
-     * @return a formatted CSV line for this product
+     * @return a formatted CSV line for this product (without trailing line separator)
      */
-    private String formatProductLine(String productName, ClaimsTriangle triangle) {
+    public String formatProductLine(String productName, ClaimsTriangle triangle) {
         List<Double> cumulativeValues = triangle.flattenCumulative();
 
         // Format each value with one decimal place (e.g., 110.0, 45.2)
@@ -152,6 +232,21 @@ public class ClaimsWriter {
             .collect(Collectors.joining(","));
 
         return productName + "," + valuesString;
+    }
+
+    /**
+     * Returns the cumulative values from a ClaimsTriangle as a list of doubles.
+     *
+     * <p>This method is useful for JSON serialization where the cumulative values
+     * need to be included as an array in the response.</p>
+     *
+     * @param triangle the ClaimsTriangle to extract values from
+     * @return a list of cumulative values in flattened triangle order
+     * @throws NullPointerException if triangle is null
+     */
+    public List<Double> getCumulativeValuesAsList(ClaimsTriangle triangle) {
+        Objects.requireNonNull(triangle, "Triangle cannot be null");
+        return triangle.flattenCumulative();
     }
 
     /**

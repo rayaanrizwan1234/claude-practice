@@ -465,7 +465,7 @@ class ClaimsReaderTest {
         @DisplayName("Should throw NullPointerException when file path is null")
         void readClaims_withNullFilePath_throwsNullPointerException() {
             // Act & Assert
-            assertThatThrownBy(() -> reader.readClaims(null))
+            assertThatThrownBy(() -> reader.readClaims((Path) null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("File path cannot be null");
         }
@@ -944,7 +944,7 @@ class ClaimsReaderTest {
             @DisplayName("Should throw NullPointerException when file path is null")
             void scanForYearRange_withNullFilePath_throwsNullPointerException() {
                 // Act & Assert
-                assertThatThrownBy(() -> reader.scanForYearRange(null))
+                assertThatThrownBy(() -> reader.scanForYearRange((Path) null))
                     .isInstanceOf(NullPointerException.class)
                     .hasMessageContaining("File path cannot be null");
             }
@@ -1557,7 +1557,7 @@ class ClaimsReaderTest {
                 Consumer<ClaimRecord> consumer = record -> {};
 
                 // Act & Assert
-                assertThatThrownBy(() -> reader.streamClaims(null, consumer))
+                assertThatThrownBy(() -> reader.streamClaims((Path) null, consumer))
                     .isInstanceOf(NullPointerException.class)
                     .hasMessageContaining("File path cannot be null");
             }
@@ -1581,7 +1581,7 @@ class ClaimsReaderTest {
             @DisplayName("Should throw NullPointerException when both parameters are null")
             void streamClaims_withBothParametersNull_throwsNullPointerException() {
                 // Act & Assert
-                assertThatThrownBy(() -> reader.streamClaims(null, null))
+                assertThatThrownBy(() -> reader.streamClaims((Path) null, null))
                     .isInstanceOf(NullPointerException.class)
                     .hasMessageContaining("File path cannot be null");
             }
