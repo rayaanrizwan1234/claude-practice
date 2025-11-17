@@ -47,6 +47,12 @@ public class ClaimsProcessingService {
 
     private static final Logger logger = LoggerFactory.getLogger(ClaimsProcessingService.class);
 
+    /**
+     * Maximum size for input stream reading (50MB).
+     * This prevents OutOfMemory errors from malicious or very large files.
+     */
+    private static final long MAX_INPUT_SIZE_BYTES = 50L * 1024 * 1024;
+
     private final ClaimsReader claimsReader;
     private final ClaimsWriter claimsWriter;
 
@@ -103,7 +109,8 @@ public class ClaimsProcessingService {
         logger.info("Starting claims processing");
 
         // Read entire content into memory for two-pass processing
-        byte[] csvBytes = inputStream.readAllBytes();
+        // Use bounded read to prevent OOM attacks
+        byte[] csvBytes = readBoundedBytes(inputStream);
         logger.debug("Read {} bytes from input stream", csvBytes.length);
 
         // First pass: scan for year range
@@ -202,5 +209,30 @@ public class ClaimsProcessingService {
             throw new NullPointerException("CSV content cannot be null");
         }
         return processClaims(new ByteArrayInputStream(csvContent.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    /**
+     * Reads bytes from an input stream with a size limit to prevent OOM attacks.
+     *
+     * <p>This method reads up to {@link #MAX_INPUT_SIZE_BYTES} + 1 byte. If the stream
+     * contains more data than the limit, an exception is thrown.</p>
+     *
+     * @param inputStream the input stream to read from
+     * @return the bytes read from the stream
+     * @throws IOException if an I/O error occurs
+     * @throws IllegalArgumentException if the stream exceeds the maximum allowed size
+     */
+    private byte[] readBoundedBytes(InputStream inputStream) throws IOException {
+        // Read one byte more than max to detect if stream exceeds limit
+        byte[] buffer = inputStream.readNBytes((int) MAX_INPUT_SIZE_BYTES + 1);
+
+        if (buffer.length > MAX_INPUT_SIZE_BYTES) {
+            throw new IllegalArgumentException(
+                String.format("Input stream exceeds maximum allowed size of %d MB",
+                    MAX_INPUT_SIZE_BYTES / (1024 * 1024))
+            );
+        }
+
+        return buffer;
     }
 }

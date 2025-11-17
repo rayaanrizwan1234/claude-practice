@@ -11,4 +11,8 @@ import java.util.List;
 public record ProductResult(
     String product,
     List<Double> cumulativeValues
-) {}
+) {
+    public ProductResult {
+        cumulativeValues = cumulativeValues != null ? List.copyOf(cumulativeValues) : List.of();
+    }
+}

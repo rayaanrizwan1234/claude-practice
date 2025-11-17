@@ -4,6 +4,7 @@ import com.wtw.claims.api.dto.response.ProcessingResultResponse;
 import com.wtw.claims.api.service.ClaimsProcessingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * REST controller for claims processing operations.
@@ -35,14 +37,20 @@ public class ClaimsController {
     private static final Logger logger = LoggerFactory.getLogger(ClaimsController.class);
 
     private final ClaimsProcessingService processingService;
+    private final int maxSyncFileSizeMb;
 
     /**
      * Constructs a new ClaimsController with the specified service.
      *
      * @param processingService the service for processing claims data
+     * @param maxSyncFileSizeMb maximum file size for synchronous processing (in MB)
      */
-    public ClaimsController(ClaimsProcessingService processingService) {
+    public ClaimsController(
+            ClaimsProcessingService processingService,
+            @Value("${claims.processing.sync.max-file-size-mb:10}") int maxSyncFileSizeMb
+    ) {
         this.processingService = processingService;
+        this.maxSyncFileSizeMb = maxSyncFileSizeMb;
     }
 
     /**
@@ -83,24 +91,61 @@ public class ClaimsController {
     public ResponseEntity<ProcessingResultResponse> processClaimsSync(
             @RequestParam("file") MultipartFile file
     ) throws IOException {
+        // Sanitize filename for logging (prevent log injection)
+        String safeFilename = sanitizeFilename(file.getOriginalFilename());
         logger.info("Received claims processing request: filename={}, size={} bytes",
-            file.getOriginalFilename(), file.getSize());
+            safeFilename, file.getSize());
 
+        // Validate file is not empty
         if (file.isEmpty()) {
             throw new IllegalArgumentException("Uploaded file is empty");
         }
 
-        // Validate file type (basic check)
+        // Validate file size for synchronous processing
+        long maxBytes = maxSyncFileSizeMb * 1024L * 1024L;
+        if (file.getSize() > maxBytes) {
+            throw new IllegalArgumentException(
+                String.format("File size %d bytes exceeds maximum allowed %d MB for synchronous processing",
+                    file.getSize(), maxSyncFileSizeMb));
+        }
+
+        // Validate file extension
         String filename = file.getOriginalFilename();
         if (filename != null && !filename.toLowerCase().endsWith(".csv")) {
             throw new IllegalArgumentException("File must be a CSV file");
         }
 
-        ProcessingResultResponse response = processingService.processClaims(file.getInputStream());
+        // Validate content type (optional warning - CSV files may have various content types)
+        String contentType = file.getContentType();
+        if (contentType != null && !contentType.contains("csv")
+                && !contentType.equals("text/plain")
+                && !contentType.equals("application/octet-stream")) {
+            logger.warn("Unexpected content type for CSV file: {}", contentType);
+        }
+
+        // Process with try-with-resources to ensure InputStream is closed
+        ProcessingResultResponse response;
+        try (InputStream inputStream = file.getInputStream()) {
+            response = processingService.processClaims(inputStream);
+        }
 
         logger.info("Claims processing completed successfully: {} products, {} records",
             response.results().size(), response.metadata().totalRecords());
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Sanitizes a filename to prevent log injection attacks.
+     *
+     * @param filename the original filename
+     * @return sanitized filename safe for logging
+     */
+    private String sanitizeFilename(String filename) {
+        if (filename == null) {
+            return "unknown";
+        }
+        // Remove potentially dangerous characters, keep only safe ones
+        return filename.replaceAll("[^a-zA-Z0-9._-]", "_");
     }
 }

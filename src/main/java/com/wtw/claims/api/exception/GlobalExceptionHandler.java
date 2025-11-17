@@ -113,7 +113,7 @@ public class GlobalExceptionHandler {
             Instant.now(),
             HttpStatus.BAD_REQUEST.value(),
             "Bad Request",
-            "Error processing file upload: " + ex.getMessage(),
+            "Error processing file upload. Please ensure the file is properly formatted and does not exceed size limits.",
             request.getRequestURI(),
             null
         );

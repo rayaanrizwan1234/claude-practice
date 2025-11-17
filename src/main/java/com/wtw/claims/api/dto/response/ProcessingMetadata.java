@@ -17,4 +17,9 @@ public record ProcessingMetadata(
     int totalRecords,
     List<String> productsProcessed,
     long processingTimeMs
-) {}
+) {
+
+    public ProcessingMetadata {
+        productsProcessed = productsProcessed != null ? List.copyOf(productsProcessed) : List.of();
+    }
+}

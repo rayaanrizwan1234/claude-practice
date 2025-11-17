@@ -20,4 +20,8 @@ public record ErrorResponse(
     String message,
     String path,
     Map<String, Object> details
-) {}
+) {
+    public ErrorResponse {
+        details = details != null ? Map.copyOf(details) : null;
+    }
+}
