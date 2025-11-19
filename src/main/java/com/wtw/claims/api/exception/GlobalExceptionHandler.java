@@ -148,6 +148,91 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles JobNotFoundException when a requested job does not exist.
+     *
+     * @param ex the exception
+     * @param request the HTTP request
+     * @return ResponseEntity with 404 Not Found status
+     */
+    @ExceptionHandler(JobNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleJobNotFoundException(
+            JobNotFoundException ex,
+            HttpServletRequest request
+    ) {
+        logger.warn("Job not found: {}", ex.getMessage());
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("jobId", ex.getJobId().toString());
+
+        ErrorResponse errorResponse = new ErrorResponse(
+            Instant.now(),
+            HttpStatus.NOT_FOUND.value(),
+            "Not Found",
+            ex.getMessage(),
+            request.getRequestURI(),
+            details
+        );
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    /**
+     * Handles JobNotCompletedException when results are requested for an incomplete job.
+     *
+     * @param ex the exception
+     * @param request the HTTP request
+     * @return ResponseEntity with 400 Bad Request status
+     */
+    @ExceptionHandler(JobNotCompletedException.class)
+    public ResponseEntity<ErrorResponse> handleJobNotCompletedException(
+            JobNotCompletedException ex,
+            HttpServletRequest request
+    ) {
+        logger.warn("Job not completed: {}", ex.getMessage());
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("jobId", ex.getJobId().toString());
+        details.put("currentStatus", ex.getCurrentStatus());
+
+        ErrorResponse errorResponse = new ErrorResponse(
+            Instant.now(),
+            HttpStatus.BAD_REQUEST.value(),
+            "Bad Request",
+            ex.getMessage(),
+            request.getRequestURI(),
+            details
+        );
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    /**
+     * Handles IllegalStateException for state-related errors (e.g., job limit reached).
+     *
+     * @param ex the exception
+     * @param request the HTTP request
+     * @return ResponseEntity with 503 Service Unavailable status
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalStateException(
+            IllegalStateException ex,
+            HttpServletRequest request
+    ) {
+        logger.warn("Service state error: {}", ex.getMessage());
+
+        ErrorResponse errorResponse = new ErrorResponse(
+            Instant.now(),
+            HttpStatus.SERVICE_UNAVAILABLE.value(),
+            "Service Unavailable",
+            ex.getMessage(),
+            request.getRequestURI(),
+            null
+        );
+
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(errorResponse);
+    }
+
+    /**
      * Handles all other uncaught exceptions as a fallback.
      *
      * <p>This prevents internal error details from leaking to clients while

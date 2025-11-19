@@ -43,7 +43,9 @@ claims:
       enabled: true
       max-concurrent-jobs: 10
       job-timeout-minutes: 30
+      job-retention-hours: 24
       cleanup-interval-minutes: 60
+      cleanup-initial-delay-minutes: 10
     sync:
       max-file-size-mb: 10
 
