@@ -319,7 +319,7 @@ class ClaimsProcessingServiceTest {
             // Assert
             String csvOutput = response.csvOutput();
             String[] lines = csvOutput.split("\n");
-            assertThat(lines[0]).isEqualTo("1990, 3");
+            assertThat(lines[0]).isEqualTo("1990,3");
         }
 
         @Test

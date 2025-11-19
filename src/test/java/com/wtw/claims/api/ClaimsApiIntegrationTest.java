@@ -86,7 +86,7 @@ class ClaimsApiIntegrationTest {
                 result.getResponse().getContentAsString(),
                 ProcessingResultResponse.class
             );
-            assertThat(response.csvOutput()).contains("1992, 2");
+            assertThat(response.csvOutput()).contains("1992,2");
             assertThat(response.csvOutput()).contains("Comp");
         }
 
@@ -206,8 +206,8 @@ class ClaimsApiIntegrationTest {
             String csvOutput = response.csvOutput();
             String[] lines = csvOutput.split("\n");
 
-            // First line should be: earliestOriginYear, numberOfDevYears
-            assertThat(lines[0].trim()).isEqualTo("1992, 2");
+            // First line should be: earliestOriginYear,numberOfDevYears (no space)
+            assertThat(lines[0].trim()).isEqualTo("1992,2");
 
             // Second line should contain Comp data
             assertThat(lines[1]).contains("Comp");
@@ -580,7 +580,7 @@ class ClaimsApiIntegrationTest {
             assertThat(response.results()).hasSize(1);
             assertThat(response.results().get(0).product()).isEqualTo("Comp");
             assertThat(response.results().get(0).cumulativeValues())
-                .containsExactly(110.0, 280.0);
+                .containsExactly(110.0, 280.0, 0.0);
         }
     }
 

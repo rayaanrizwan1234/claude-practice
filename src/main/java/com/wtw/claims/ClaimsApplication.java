@@ -18,30 +18,47 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Main application entry point for the Claims Triangle Accumulator.
  *
- * <p>This application reads incremental insurance claims data from a CSV file,
- * processes it into cumulative claims triangles, and writes the output to a CSV file.
- * Claims triangles are used in actuarial analysis for tracking and predicting future
- * claim payments.</p>
+ * <p>
+ * This application reads incremental insurance claims data from a CSV file,
+ * processes it into cumulative claims triangles, and writes the output to a CSV
+ * file.
+ * Claims triangles are used in actuarial analysis for tracking and predicting
+ * future
+ * claim payments.
+ * </p>
  *
- * <p><strong>Usage:</strong></p>
+ * <p>
+ * <strong>Usage:</strong>
+ * </p>
+ * 
  * <pre>
  * java -jar claims-triangle-accumulator.jar &lt;input-file&gt; &lt;output-file&gt;
  * </pre>
  *
- * <p><strong>Example:</strong></p>
+ * <p>
+ * <strong>Example:</strong>
+ * </p>
+ * 
  * <pre>
  * java -jar claims-triangle-accumulator.jar files/problem.csv output.csv
  * </pre>
  *
- * <p><strong>Processing Pipeline:</strong></p>
+ * <p>
+ * <strong>Processing Pipeline:</strong>
+ * </p>
  * <ol>
- *   <li><strong>Scan:</strong> Determine global origin/development year bounds</li>
- *   <li><strong>Stream:</strong> Build product triangles incrementally without loading the full dataset</li>
- *   <li><strong>Accumulate:</strong> Calculate cumulative values</li>
- *   <li><strong>Write:</strong> Output cumulative triangles to CSV</li>
+ * <li><strong>Scan:</strong> Determine global origin/development year
+ * bounds</li>
+ * <li><strong>Stream:</strong> Build product triangles incrementally without
+ * loading the full dataset</li>
+ * <li><strong>Accumulate:</strong> Calculate cumulative values</li>
+ * <li><strong>Write:</strong> Output cumulative triangles to CSV</li>
  * </ol>
  *
- * <p><strong>Input Format:</strong></p>
+ * <p>
+ * <strong>Input Format:</strong>
+ * </p>
+ * 
  * <pre>
  * Product, Origin Year, Development Year, Incremental Value
  * Comp, 1992, 1992, 110.0
@@ -49,7 +66,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Non-Comp, 1990, 1990, 45.2
  * </pre>
  *
- * <p><strong>Output Format:</strong></p>
+ * <p>
+ * <strong>Output Format:</strong>
+ * </p>
+ * 
  * <pre>
  * 1990,4
  * Comp,0.0,0.0,0.0,0.0,0.0,0.0,0.0,110.0,280.0,200.0
@@ -66,10 +86,13 @@ public class ClaimsApplication {
     /**
      * Main entry point for the Claims Triangle Accumulator application.
      *
-     * <p>This method orchestrates the entire processing pipeline from reading
-     * incremental claims data to writing cumulative claims triangles.</p>
+     * <p>
+     * This method orchestrates the entire processing pipeline from reading
+     * incremental claims data to writing cumulative claims triangles.
+     * </p>
      *
-     * @param args command-line arguments: [0] = input CSV file path, [1] = output CSV file path
+     * @param args command-line arguments: [0] = input CSV file path, [1] = output
+     *             CSV file path
      */
     public static void main(String[] args) {
         // Validate command-line arguments
@@ -125,30 +148,44 @@ public class ClaimsApplication {
     /**
      * Processes claims data through the streaming pipeline (memory-efficient).
      *
-     * <p>This method uses a two-pass streaming approach:</p>
+     * <p>
+     * This method uses a two-pass streaming approach:
+     * </p>
      * <ol>
-     *   <li><strong>Pass 1:</strong> Scan for year ranges (minimal memory - O(1))</li>
-     *   <li><strong>Pass 2:</strong> Stream and build triangles directly (no full record list)</li>
-     *   <li><strong>Calculate:</strong> Compute cumulative values</li>
-     *   <li><strong>Write:</strong> Output cumulative triangles</li>
+     * <li><strong>Pass 1:</strong> Scan for year ranges (minimal memory -
+     * O(1))</li>
+     * <li><strong>Pass 2:</strong> Stream and build triangles directly (no full
+     * record list)</li>
+     * <li><strong>Calculate:</strong> Compute cumulative values</li>
+     * <li><strong>Write:</strong> Output cumulative triangles</li>
      * </ol>
      *
-     * <p><strong>Memory Usage:</strong> This streaming approach uses significantly less memory
-     * than the traditional approach by never loading all records into a List. Instead, records
-     * are processed one at a time and immediately added to triangles.</p>
+     * <p>
+     * <strong>Memory Usage:</strong> This streaming approach uses significantly
+     * less memory
+     * than the traditional approach by never loading all records into a List.
+     * Instead, records
+     * are processed one at a time and immediately added to triangles.
+     * </p>
      *
-     * <p><strong>Memory Comparison (1M records):</strong></p>
+     * <p>
+     * <strong>Memory Comparison (1M records):</strong>
+     * </p>
      * <ul>
-     *   <li>Traditional approach: ~170 MB peak (records + grouped + triangles)</li>
-     *   <li>Streaming approach: ~100 MB peak (triangles only)</li>
-     *   <li>Reduction: 41%</li>
+     * <li>Traditional approach: ~170 MB peak (records + grouped + triangles)</li>
+     * <li>Streaming approach: ~100 MB peak (triangles only)</li>
+     * <li>Reduction: 41%</li>
      * </ul>
      *
-     * <p><strong>Note:</strong> This method is package-private to allow integration testing.</p>
+     * <p>
+     * <strong>Note:</strong> This method is package-private to allow integration
+     * testing.
+     * </p>
      *
-     * @param inputPath the path to the input CSV file
+     * @param inputPath  the path to the input CSV file
      * @param outputPath the path to the output CSV file
-     * @throws IOException if an I/O error occurs reading or writing files
+     * @throws IOException              if an I/O error occurs reading or writing
+     *                                  files
      * @throws IllegalArgumentException if the input data is invalid
      */
     static void processClaims(Path inputPath, Path outputPath) throws IOException {
@@ -161,7 +198,7 @@ public class ClaimsApplication {
         int latestDevelopmentYear = yearRange.maxDevYear();
         int numberOfDevelopmentYears = yearRange.getNumberOfDevelopmentYears();
         logger.info("  Year range: {} to {} ({} development years)",
-            earliestOriginYear, latestDevelopmentYear, numberOfDevelopmentYears);
+                earliestOriginYear, latestDevelopmentYear, numberOfDevelopmentYears);
 
         // STEP 2: Stream records and build triangles on the fly
         logger.info("Step 2/4: Streaming claims and building triangles...");
@@ -173,19 +210,17 @@ public class ClaimsApplication {
 
             // Get or create the triangle for this product
             ClaimsTriangle triangle = triangles.computeIfAbsent(
-                record.product(),
-                product -> {
-                    logger.debug("Creating triangle for product: {}", product);
-                    return new ClaimsTriangle(product, earliestOriginYear, latestDevelopmentYear);
-                }
-            );
+                    record.product(),
+                    product -> {
+                        logger.debug("Creating triangle for product: {}", product);
+                        return new ClaimsTriangle(product, earliestOriginYear, latestDevelopmentYear);
+                    });
 
             // Add this record's incremental value to the triangle
             triangle.addIncrementalValue(
-                record.originYear(),
-                record.developmentYear(),
-                record.incrementalValue()
-            );
+                    record.originYear(),
+                    record.developmentYear(),
+                    record.incrementalValue());
 
             // Log progress for large files (every 10,000 records)
             if (count % 10000 == 0) {
@@ -201,7 +236,7 @@ public class ClaimsApplication {
         }
 
         logger.info("  Streamed {} claim record(s) into {} product triangle(s): {}",
-            recordCount.get(), triangles.size(), triangles.keySet());
+                recordCount.get(), triangles.size(), triangles.keySet());
 
         // STEP 3: Calculate cumulative values for each triangle
         logger.info("Step 3/4: Calculating cumulative values...");
@@ -216,11 +251,10 @@ public class ClaimsApplication {
         logger.info("Step 4/4: Writing cumulative claims to CSV...");
         ClaimsWriter writer = new ClaimsWriter();
         writer.writeCumulativeClaims(
-            outputPath,
-            triangles,
-            earliestOriginYear,
-            numberOfDevelopmentYears
-        );
+                outputPath,
+                triangles,
+                earliestOriginYear,
+                numberOfDevelopmentYears);
         logger.info("  Written {} product triangle(s) to {}", triangles.size(), outputPath);
     }
 }

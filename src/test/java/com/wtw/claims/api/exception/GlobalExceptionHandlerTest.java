@@ -206,7 +206,7 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
-        @DisplayName("Should include exception message in response")
+        @DisplayName("Should include generic sanitized message in response")
         void handleMultipartException_includesExceptionMessage() {
             // Arrange
             String errorMessage = "Failed to parse multipart request";
@@ -215,13 +215,15 @@ class GlobalExceptionHandlerTest {
             // Act
             ResponseEntity<ErrorResponse> response = exceptionHandler.handleMultipartException(ex, mockRequest);
 
-            // Assert
+            // Assert - Should use sanitized generic message, not leak exception details
             assertThat(response.getBody()).isNotNull();
-            assertThat(response.getBody().message()).contains(errorMessage);
+            assertThat(response.getBody().message()).isEqualTo(
+                "Error processing file upload. Please ensure the file is properly formatted and does not exceed size limits."
+            );
         }
 
         @Test
-        @DisplayName("Should prefix message with 'Error processing file upload'")
+        @DisplayName("Should use sanitized message for security")
         void handleMultipartException_prefixesMessage() {
             // Arrange
             MultipartException ex = new MultipartException("Invalid file");
@@ -229,8 +231,10 @@ class GlobalExceptionHandlerTest {
             // Act
             ResponseEntity<ErrorResponse> response = exceptionHandler.handleMultipartException(ex, mockRequest);
 
-            // Assert
-            assertThat(response.getBody().message()).startsWith("Error processing file upload:");
+            // Assert - Should use generic message for security (don't leak implementation details)
+            assertThat(response.getBody().message()).isEqualTo(
+                "Error processing file upload. Please ensure the file is properly formatted and does not exceed size limits."
+            );
         }
 
         @Test
